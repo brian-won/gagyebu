@@ -133,6 +133,18 @@
   .stat-tile .sub { font-size:12px; color:var(--text-secondary); }
   .stat-tile .value.pos { color: var(--series-1); }
   .stat-tile .value.neg { color: var(--critical); }
+  .stat-tile-toggle { cursor:pointer; user-select:none; transition:border-color .15s; }
+  .stat-tile-toggle:hover { border-color: var(--series-1); }
+  .stat-tile-toggle .stat-eye { font-size:11px; opacity:.45; margin-left:2px; }
+  .stat-tile-toggle .value.masked { color: var(--muted); letter-spacing:3px; }
+
+  /* ---------- 계좌현황: 자본/부채/평가/장기/실질 요약 바 ---------- */
+  .acct-summary-bar { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+  .acct-summary-item { flex:1 1 160px; min-width:150px; border:1px solid var(--border); border-radius:10px; padding:11px 14px; background:var(--card); display:flex; flex-direction:column; gap:5px; }
+  .acct-summary-item .label { font-size:12px; color:var(--muted); font-weight:600; }
+  .acct-summary-item .value { font-size:19px; font-weight:700; letter-spacing:-0.3px; font-variant-numeric: tabular-nums; }
+  .acct-summary-item .value.pos { color: var(--series-1); }
+  .acct-summary-item .value.neg { color: var(--critical); }
 
   table { width:100%; border-collapse:collapse; font-size:13.5px; }
   th { text-align:left; font-size:12px; color:var(--muted); font-weight:600; padding:8px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
@@ -238,9 +250,10 @@
   .fav-manager-row .fmr-info .muted-small { font-size:11.5px; }
   .fav-manager-row .fmr-actions { display:flex; gap:4px; flex-shrink:0; }
 
-  .drag-handle { cursor:grab; color:var(--muted); font-size:15px; padding:2px 4px; flex-shrink:0; user-select:none; touch-action:none; }
+  .drag-handle { cursor:grab; color:var(--muted); font-size:15px; padding:8px 10px; flex-shrink:0; user-select:none; touch-action:none; display:inline-block; }
   .drag-row.dragging-row { position:relative; z-index:20; box-shadow:0 6px 18px rgba(0,0,0,0.18); background:var(--card); border-color:var(--text-primary); cursor:grabbing; }
-  .drag-row { transition:transform 0.05s ease; }
+  .drag-row { transition:transform 0.05s ease; touch-action:none; }
+  body.drag-reorder-active { overflow:hidden; touch-action:none; overscroll-behavior:none; }
 
   .subtabs { display:flex; gap:6px; margin-bottom:16px; }
   .subtabs button { border:1px solid var(--border); background:var(--card); padding:7px 14px; border-radius:20px; font-size:13px; font-weight:600; color:var(--text-secondary); }
@@ -414,7 +427,7 @@
   <h1>💰 우리집 가계부<span id="member-line">나 &amp; 배우자</span></h1>
   <button class="nav-btn active" data-view="dashboard"><span class="nav-icon">📊</span>대시보드</button>
   <button class="nav-btn" data-view="transactions"><span class="nav-icon">🧾</span>거래내역</button>
-  <button class="nav-btn" data-view="assets"><span class="nav-icon">🏦</span>자산·부채</button>
+  <button class="nav-btn" data-view="assets"><span class="nav-icon">🏦</span>계좌현황</button>
   <button class="nav-btn" data-view="budget"><span class="nav-icon">🎯</span>예산</button>
   <button class="nav-btn" data-view="report"><span class="nav-icon">📈</span>리포트</button>
   <button class="nav-btn" data-view="settings"><span class="nav-icon">⚙️</span>설정 · 데이터</button>
@@ -447,18 +460,45 @@
     <!-- ================= DASHBOARD ================= -->
     <section class="view active" id="view-dashboard">
       <div class="banner" id="onboard-banner" style="display:none">
-        아직 데이터가 없어요. <b>자산·부채</b>에서 계좌를 등록하고, <b>거래내역</b>에서 수입·지출을 입력해보세요.
+        아직 데이터가 없어요. <b>계좌현황</b>에서 계좌를 등록하고, <b>거래내역</b>에서 수입·지출을 입력해보세요.
         <button class="btn small" data-view="assets">계좌 등록하러 가기</button>
       </div>
       <div class="bento-grid">
-        <div class="card stat-tile bento-hero">
-          <div class="hero-top"><div class="label">순자산</div><span class="hero-icon">💰</span></div>
+        <div class="card" style="grid-column: span 4">
+          <div class="section-title">
+            <h3>최근 거래</h3>
+            <div style="display:flex;gap:8px;align-items:center">
+              <select id="dash-recent-filter" style="padding:6px 8px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text-primary);font-size:12.5px">
+                <option value="all">전체 보기</option>
+                <option value="지출" selected>지출만 보기</option>
+                <option value="수입">수입만 보기</option>
+                <option value="이체">이체만 보기</option>
+              </select>
+              <button class="btn small" data-view="transactions">전체 보기 →</button>
+            </div>
+          </div>
+          <table id="recent-tx-table"><thead><tr><th>날짜</th><th>구분</th><th>카테고리</th><th>내용</th><th>담당</th><th class="num">금액</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="card stat-tile stat-tile-toggle" id="stat-tile-expense" data-stat-key="expense">
+          <div class="label">이번 달 지출 <span class="stat-eye">👁</span></div>
+          <div class="value neg" id="stat-expense">0원</div>
+          <div class="sub" id="stat-expense-sub"></div>
+        </div>
+        <div class="card stat-tile stat-tile-toggle" id="stat-tile-income" data-stat-key="income">
+          <div class="label">이번 달 수입 <span class="stat-eye">👁</span></div>
+          <div class="value pos" id="stat-income">0원</div>
+          <div class="sub" id="stat-income-sub"></div>
+        </div>
+        <div class="card stat-tile stat-tile-toggle" id="stat-tile-save" data-stat-key="save">
+          <div class="label">이번 달 저축 <span class="stat-eye">👁</span></div>
+          <div class="value" id="stat-save">0원</div>
+          <div class="sub" id="stat-save-sub">저축률 0%</div>
+        </div>
+        <div class="card stat-tile stat-tile-toggle" id="stat-tile-networth" data-stat-key="networth">
+          <div class="label">순자산 <span class="stat-eye">👁</span></div>
           <div class="value" id="stat-networth">0원</div>
           <div class="sub" id="stat-networth-sub"></div>
         </div>
-        <div class="card stat-tile"><div class="label">이번 달 수입</div><div class="value pos" id="stat-income">0원</div><div class="sub" id="stat-income-sub"></div></div>
-        <div class="card stat-tile"><div class="label">이번 달 지출</div><div class="value neg" id="stat-expense">0원</div><div class="sub" id="stat-expense-sub"></div></div>
-        <div class="card stat-tile" style="grid-column: span 2"><div class="label">이번 달 저축</div><div class="value" id="stat-save">0원</div><div class="sub" id="stat-save-sub">저축률 0%</div></div>
         <div class="card" style="grid-column: span 3">
           <h3>최근 6개월 수입 · 지출 추이</h3>
           <div class="chart-wrap" id="chart-trend"></div>
@@ -466,10 +506,6 @@
         <div class="card">
           <h3>이번 달 지출 카테고리</h3>
           <div class="chart-wrap" id="chart-cat"></div>
-        </div>
-        <div class="card" style="grid-column: span 4">
-          <div class="section-title"><h3>최근 거래</h3><button class="btn small" data-view="transactions">전체 보기 →</button></div>
-          <table id="recent-tx-table"><thead><tr><th>날짜</th><th>구분</th><th>카테고리</th><th>내용</th><th>담당</th><th class="num">금액</th></tr></thead><tbody></tbody></table>
         </div>
       </div>
     </section>
@@ -590,32 +626,28 @@
 
     <!-- ================= ASSETS ================= -->
     <section class="view" id="view-assets">
+      <div class="acct-summary-bar">
+        <div class="acct-summary-item"><div class="label">자본<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">잔고가 0보다 큰 계정의 잔고 합. 실질적으로 내가 가진 자산의 원금이에요.</span></span></div><div class="value" id="acct-capital">0원</div></div>
+        <div class="acct-summary-item"><div class="label">부채<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">잔고가 0보다 작은 계정의 잔고 합. 내가 갚아야 할 채무의 합이에요.</span></span></div><div class="value" id="acct-debt">0원</div></div>
+        <div class="acct-summary-item"><div class="label">평가(금)<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">잔고가 양수인 계정 중, 평가금이 입력돼 있으면 평가금을, 아니면 잔고를 더한 값이에요. 지금 모두 현금화했을 때 손에 쥐는 금액이에요.</span></span></div><div class="value" id="acct-eval">0원</div></div>
+        <div class="acct-summary-item"><div class="label">장기(자본)<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">평가(금) + 이익금. 부채를 포함하지 않은 장기적인 총 자본금이에요.</span></span></div><div class="value" id="acct-longterm">0원</div></div>
+        <div class="acct-summary-item"><div class="label">실질(자산)<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">평가(금) - 부채. 지금 부채를 모두 청산했을 때의 실질 자산이에요.</span></span></div><div class="value" id="acct-real">0원</div></div>
+      </div>
       <div class="bento-grid">
-        <div class="card stat-tile bento-hero">
-          <div class="hero-top"><div class="label">순자산</div><span class="hero-icon">🏦</span></div>
-          <div class="value" id="net-total">0원</div>
-        </div>
-        <div class="card stat-tile"><div class="label">총자산</div><div class="value pos" id="assets-total">0원</div></div>
-        <div class="card stat-tile"><div class="label">총부채</div><div class="value neg" id="liab-total">0원</div></div>
-        <div class="card" style="grid-column: span 2">
+        <div class="card" style="grid-column: span 4">
           <h3>순자산 추이 (최근 12개월)</h3>
           <div class="chart-wrap" id="chart-networth"></div>
         </div>
         <div class="card" style="grid-column: span 4">
           <div class="section-title">
-            <h3>자산 계좌 — <span id="assets-month-label"></span> 기준 잔액<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">계좌번호는 적지 말고, 알아보기 쉬운 이름만 사용하세요. (예: 원 월급통장, 김 비상금통장)</span></span></h3>
-            <button class="btn small primary" id="add-account-btn">+ 계좌 추가</button>
+            <h3>계좌 현황 — <span id="assets-month-label"></span> 기준 잔액<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">계좌번호는 적지 말고, 알아보기 쉬운 이름만 사용하세요. (예: 원 월급통장, 김 비상금통장). 대출/신용대출 등 부채도 여기서 마이너스 잔액으로 등록하세요.</span></span></h3>
+            <div style="display:flex;gap:8px">
+              <button class="btn small ghost" id="toggle-hidden-accounts-btn">숨긴 계좌(0)</button>
+              <button class="btn small primary" id="add-account-btn">+ 계좌 추가</button>
+            </div>
           </div>
-          <table><thead><tr><th>순서</th><th>이름</th><th>유형</th><th>담당</th><th class="num">잔액</th><th></th></tr></thead><tbody id="accounts-table-body"></tbody></table>
-          <div class="empty-state" id="accounts-empty" style="display:none">등록된 자산 계좌가 없어요. 계좌를 추가해보세요.</div>
-        </div>
-        <div class="card" style="grid-column: span 4">
-          <div class="section-title">
-            <h3>부채(대출) — <span id="liab-month-label"></span> 기준 잔액</h3>
-            <button class="btn small primary" id="add-liability-btn">+ 부채 추가</button>
-          </div>
-          <table><thead><tr><th>이름</th><th>유형</th><th>담당</th><th class="num">잔액</th><th></th></tr></thead><tbody id="liab-table-body"></tbody></table>
-          <div class="empty-state" id="liab-empty" style="display:none">등록된 부채가 없어요.</div>
+          <table><thead><tr><th>순서</th><th>이름</th><th>유형</th><th>담당</th><th class="num">잔액</th><th class="num">평가금</th><th class="num">이익금</th><th></th></tr></thead><tbody id="accounts-table-body"></tbody></table>
+          <div class="empty-state" id="accounts-empty" style="display:none">등록된 계좌가 없어요. 계좌를 추가해보세요.</div>
         </div>
       </div>
     </section>
@@ -1038,16 +1070,43 @@ function migrateCreditCardBalanceSignOnce(){
   return true;
 }
 
+/* '계좌현황' 탭 통합(v1): 예전에는 "자산 계좌"와 "부채(대출)"를 서로 다른 목록(state.accounts / state.liabilities)으로
+   따로 관리했지만, 이제는 리채2처럼 하나의 계좌 목록으로 합쳐서 잔고의 부호(양수=자본, 음수=부채)만으로 구분한다.
+   기존에 등록해둔 부채 항목을 계좌 목록으로 옮기고, 그동안 입력해둔 부채 잔액(양수로 저장돼 있던 "채무액")도
+   부호를 뒤집어서 새 계좌 잔액 규칙(마이너스=빚)에 맞춰준다. 딱 한 번만 실행된다. */
+function migrateLiabilitiesIntoAccountsOnce(){
+  if (state.liabilitiesMergedV1) return false;
+  if (state.liabilities && state.liabilities.length){
+    state.liabilities.forEach(l=>{
+      if (l.type && !state.accountTypes.includes(l.type)) state.accountTypes.push(l.type);
+      state.accounts.push({ id:l.id, name:l.name, type:l.type||'빌린돈', assetCode:'일반', owner:l.owner||'' });
+      Object.keys(state.liabBalances||{}).forEach(ym=>{
+        const v = state.liabBalances[ym][l.id];
+        if (v === undefined || v === null) return;
+        if (!state.balances[ym]) state.balances[ym] = {};
+        if (state.balances[ym][l.id] === undefined) state.balances[ym][l.id] = -v;
+      });
+    });
+    state.liabilities = [];
+  }
+  state.liabilitiesMergedV1 = true;
+  return true;
+}
+
 /* 파일/클라우드에서 데이터를 불러올 때마다 한 번씩만 실행돼야 하는 마이그레이션들을 모아서 실행한다. */
 function runOneTimeMigrations(){
   const a = seedDefaultCategoriesOnce();
   const b = migrateCreditCardBalanceSignOnce();
-  return a || b;
+  const c = migrateLiabilitiesIntoAccountsOnce();
+  return a || b || c;
 }
 
 let state = emptyState();
 let dirty = false;
 let currentYM = todayStr().slice(0,7);
+let assetsShowHiddenOnly = false;
+let dashRecentFilter = '지출';
+let dashStatRevealed = { expense:false, income:false, save:false, networth:false };
 let editingTxId = null;
 let selectedTxIds = new Set();
 let txMemoSuggest = null;
@@ -1538,15 +1597,47 @@ function visibleAccounts(){ return state.accounts.filter(a=>!a.hidden); }
 function transactableAccounts(){ return visibleAccounts().filter(a=>!isUnusedAsset(a)); }
 function linkedCheckCardsOf(accId){ return state.accounts.filter(a=>isCheckCard(a) && a.linkedAccountId===accId); }
 
-function totalAssetsAt(ym){
-  return visibleAccounts().filter(a=>!isCreditCard(a) && !isCheckCard(a)).reduce((sum,a) => sum + (accountBalanceAt(a.id, ym) || 0), 0);
+/* ---------------- 계좌현황: 자본/부채/평가/장기/실질 (리채2 방식) ----------------
+   '계좌현황'에서는 자산/부채를 별도 목록으로 나누지 않고, 체크카드를 뺀 모든 계좌를 잔고 부호로만 구분한다:
+   잔고 > 0 이면 "자본"(내 돈), 잔고 < 0 이면 "부채"(갚을 돈). 신용카드/대출 계좌도 이 규칙을 그대로 따른다. */
+function acctCapitalAt(ym){
+  return visibleAccounts().filter(a=>!isCheckCard(a)).reduce((sum,a)=>{
+    const bal = accountBalanceAt(a.id, ym) || 0;
+    return bal > 0 ? sum + bal : sum;
+  }, 0);
 }
-function totalLiabAt(ym){
-  const liabTotal = state.liabilities.reduce((sum,l) => sum + (liabBalanceAt(l.id, ym) || 0), 0);
-  // 신용카드는 이제 일반 계좌와 같은 방식으로 잔액이 계산돼서(지출하면 (-)로 내려감) 사용액은 잔액의 부호를 뒤집은 값이다.
-  const cardTotal = visibleAccounts().filter(isCreditCard).reduce((sum,a) => sum - (accountBalanceAt(a.id, ym) || 0), 0);
-  return liabTotal + cardTotal;
+/* 부채는 음수 그대로 합산한 값(0 이하)을 돌려준다 — 실질(자산) 계산에서 평가금에 그대로 더하면 되도록. */
+function acctDebtAt(ym){
+  return visibleAccounts().filter(a=>!isCheckCard(a)).reduce((sum,a)=>{
+    const bal = accountBalanceAt(a.id, ym) || 0;
+    return bal < 0 ? sum + bal : sum;
+  }, 0);
 }
+/* 평가(금): 잔고>0인 계정 중 평가금이 입력돼 있으면(>0) 평가금을, 아니면 잔고를 더한다. */
+function acctEvalAt(ym){
+  return visibleAccounts().filter(a=>!isCheckCard(a)).reduce((sum,a)=>{
+    const bal = accountBalanceAt(a.id, ym) || 0;
+    if (bal <= 0) return sum;
+    const ev = Number(a.evalAmount)||0;
+    return sum + (ev > 0 ? ev : bal);
+  }, 0);
+}
+/* 이익금: 잔고>0이면서 평가금이 입력돼 있지 않은(<=0) 계정의 이익금 합. */
+function acctProfitAt(ym){
+  return visibleAccounts().filter(a=>!isCheckCard(a)).reduce((sum,a)=>{
+    const bal = accountBalanceAt(a.id, ym) || 0;
+    const ev = Number(a.evalAmount)||0;
+    if (bal > 0 && ev <= 0) return sum + (Number(a.profitAmount)||0);
+    return sum;
+  }, 0);
+}
+function acctLongTermAt(ym){ return acctEvalAt(ym) + acctProfitAt(ym); }
+function acctRealAt(ym){ return acctEvalAt(ym) + acctDebtAt(ym); }
+
+/* 대시보드/리포트 등 다른 화면에서 쓰는 "총자산/총부채/순자산"은 위 자본/부채와 같은 계산이되,
+   부채를 항상 양수(빚의 크기)로 돌려주는 예전 계약을 그대로 유지한다. */
+function totalAssetsAt(ym){ return acctCapitalAt(ym); }
+function totalLiabAt(ym){ return -acctDebtAt(ym); }
 function netWorthAt(ym){ return totalAssetsAt(ym) - totalLiabAt(ym); }
 /* ---------------- balance reconciliation (expected vs actual) ---------------- */
 function accountTxNetAt(accId, ym){
@@ -1679,7 +1770,7 @@ function switchView(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
-  const titles = {dashboard:'대시보드', transactions:'거래내역', assets:'자산·부채', budget:'예산', report:'리포트', settings:'설정 · 데이터'};
+  const titles = {dashboard:'대시보드', transactions:'거래내역', assets:'계좌현황', budget:'예산', report:'리포트', settings:'설정 · 데이터'};
   document.getElementById('view-title').textContent = titles[view];
   renderAll();
 }
@@ -1701,25 +1792,39 @@ function renderDashboard(){
   document.getElementById('onboard-banner').style.display = hasData ? 'none' : 'flex';
 
   const t = monthTotals(currentYM);
-  document.getElementById('stat-income').textContent = fmtWon(t.income);
-  document.getElementById('stat-expense').textContent = fmtWon(t.expense);
-  const saveEl = document.getElementById('stat-save');
-  saveEl.textContent = fmtWonSigned(t.save);
-  saveEl.className = 'value ' + (t.save>=0 ? 'pos':'neg');
   const rate = t.income>0 ? Math.round((t.save/t.income)*100) : 0;
-  document.getElementById('stat-save-sub').textContent = `저축률 ${rate}%`;
-
   const nw = netWorthAt(currentYM);
-  document.getElementById('stat-networth').textContent = fmtWonSigned(nw);
-  document.getElementById('stat-networth-sub').textContent = `자산 ${fmtWon(totalAssetsAt(currentYM))} · 부채 ${fmtWon(totalLiabAt(currentYM))}`;
+
+  renderMaskableStat('expense', fmtWon(t.expense), 'value neg', '');
+  renderMaskableStat('income', fmtWon(t.income), 'value pos', '');
+  renderMaskableStat('save', fmtWonSigned(t.save), 'value ' + (t.save>=0 ? 'pos':'neg'), `저축률 ${rate}%`);
+  renderMaskableStat('networth', fmtWonSigned(nw), 'value', `자산 ${fmtWon(totalAssetsAt(currentYM))} · 부채 ${fmtWon(totalLiabAt(currentYM))}`);
 
   // recent transactions
-  const recent = [...state.transactions].sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0,8);
+  const recentFilterEl = document.getElementById('dash-recent-filter');
+  if (recentFilterEl) recentFilterEl.value = dashRecentFilter;
+  const recentPool = dashRecentFilter === 'all' ? state.transactions : state.transactions.filter(t=>t.type===dashRecentFilter);
+  const recent = [...recentPool].sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0,8);
   const tbody = document.getElementById('recent-tx-table').querySelector('tbody');
   tbody.innerHTML = recent.length ? recent.map(rowHtmlSimple).join('') : `<tr><td colspan="6" class="empty-state">거래 내역이 아직 없어요.</td></tr>`;
 
   renderTrendChart();
   renderCatChart('chart-cat', currentYM);
+}
+
+function renderMaskableStat(key, valueText, valueClassRevealed, subText){
+  const valueEl = document.getElementById('stat-'+key);
+  const subEl = document.getElementById('stat-'+key+'-sub');
+  if (!valueEl) return;
+  if (dashStatRevealed[key]){
+    valueEl.textContent = valueText;
+    valueEl.className = valueClassRevealed;
+    if (subEl) subEl.textContent = subText;
+  } else {
+    valueEl.textContent = '• • • • •';
+    valueEl.className = 'value masked';
+    if (subEl) subEl.textContent = '👆 탭하여 보기';
+  }
 }
 
 function txTagClass(t){ return t.type==='수입' ? 'income' : (t.type==='이체' ? 'transfer' : 'expense'); }
@@ -3033,18 +3138,29 @@ function makeDragReorderable(containerEl, onReorder){
   if (!containerEl || containerEl.dataset.dragWired) return;
   containerEl.dataset.dragWired = '1';
   let dragging = null, startY = 0, startTransform = 0;
+  // 모바일에서 드래그 도중 브라우저가 세로 스크롤로 판단하고 제스처를 가로채 버리는 문제를
+  // 막기 위한 강제 차단막. touch-action:none만으로는 일부 모바일 브라우저에서
+  // 스크롤을 완전히 막지 못하므로, 실제 touchmove 이벤트도 non-passive로 잡아 취소한다.
+  const blockTouchScroll = (ev)=>{ if (dragging) ev.preventDefault(); };
+  document.addEventListener('touchmove', blockTouchScroll, { passive:false });
+
   containerEl.addEventListener('pointerdown', (e)=>{
     const handle = e.target.closest('.drag-handle');
     if (!handle) return;
     const row = handle.closest('.drag-row');
     if (!row || row.parentElement !== containerEl) return;
     e.preventDefault();
+    if (handle.setPointerCapture){
+      try { handle.setPointerCapture(e.pointerId); } catch(err){}
+    }
     dragging = row;
     startY = e.clientY;
     startTransform = 0;
     row.classList.add('dragging-row');
+    document.body.classList.add('drag-reorder-active');
     const move = (ev)=>{
       if (!dragging) return;
+      if (ev.cancelable) ev.preventDefault();
       const dy = ev.clientY - startY;
       startTransform = dy;
       dragging.style.transform = `translateY(${dy}px)`;
@@ -3072,9 +3188,11 @@ function makeDragReorderable(containerEl, onReorder){
         dragging.style.transform = 'translateY(0px)';
       }
     };
-    const up = ()=>{
+    const finish = ()=>{
       document.removeEventListener('pointermove', move);
-      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointerup', finish);
+      document.removeEventListener('pointercancel', finish);
+      document.body.classList.remove('drag-reorder-active');
       if (dragging){
         dragging.style.transform = '';
         dragging.classList.remove('dragging-row');
@@ -3083,24 +3201,38 @@ function makeDragReorderable(containerEl, onReorder){
       dragging = null;
       onReorder(ids);
     };
-    document.addEventListener('pointermove', move);
-    document.addEventListener('pointerup', up);
+    document.addEventListener('pointermove', move, { passive:false });
+    document.addEventListener('pointerup', finish);
+    // 브라우저가 제스처를 스크롤로 판단해 가로채면 pointercancel이 발생한다 — 이 경우에도
+    // 드래그 상태를 정리해서 다음 시도가 먹통이 되지 않도록 한다.
+    document.addEventListener('pointercancel', finish);
   });
 }
 
 function renderAssetsView(){
   document.getElementById('assets-month-label').textContent = ymLabel(currentYM);
-  document.getElementById('liab-month-label').textContent = ymLabel(currentYM);
-  document.getElementById('assets-total').textContent = fmtWon(totalAssetsAt(currentYM));
-  document.getElementById('liab-total').textContent = fmtWon(totalLiabAt(currentYM));
-  const net = netWorthAt(currentYM);
-  const netEl = document.getElementById('net-total');
-  netEl.textContent = fmtWonSigned(net);
-  netEl.className = 'value ' + (net>=0?'pos':'neg');
+
+  document.getElementById('acct-capital').textContent = fmtWon(acctCapitalAt(currentYM));
+  const debtEl = document.getElementById('acct-debt');
+  debtEl.textContent = fmtWonSigned(acctDebtAt(currentYM));
+  debtEl.className = 'value ' + (acctDebtAt(currentYM)<0?'neg':'pos');
+  document.getElementById('acct-eval').textContent = fmtWon(acctEvalAt(currentYM));
+  document.getElementById('acct-longterm').textContent = fmtWon(acctLongTermAt(currentYM));
+  const realEl = document.getElementById('acct-real');
+  const real = acctRealAt(currentYM);
+  realEl.textContent = fmtWonSigned(real);
+  realEl.className = 'value ' + (real>=0?'pos':'neg');
+
+  const hiddenToggleBtn = document.getElementById('toggle-hidden-accounts-btn');
+  const hiddenCount = state.accounts.filter(a=>a.hidden).length;
+  hiddenToggleBtn.textContent = assetsShowHiddenOnly ? `사용 계좌` : `숨긴 계좌(${hiddenCount})`;
+  // 두 상태(숨긴 계좌 / 사용 계좌) 모두 같은 ghost 스타일을 유지한다 — 글자만 바뀌고 버튼 모양은 그대로.
 
   const accBody = document.getElementById('accounts-table-body');
-  document.getElementById('accounts-empty').style.display = state.accounts.length?'none':'block';
-  accBody.innerHTML = state.accounts.map((a,idx)=>{
+  const shownAccounts = state.accounts.filter(a=> assetsShowHiddenOnly ? a.hidden : !a.hidden);
+  document.getElementById('accounts-empty').style.display = shownAccounts.length?'none':'block';
+  document.getElementById('accounts-empty').textContent = assetsShowHiddenOnly ? '숨긴 계좌가 없어요.' : '등록된 계좌가 없어요. 계좌를 추가해보세요.';
+  accBody.innerHTML = shownAccounts.map((a,idx)=>{
     const bal = accountBalanceAt(a.id, currentYM);
     const checkCard = isCheckCard(a);
     const creditCard = isCreditCard(a);
@@ -3108,10 +3240,12 @@ function renderAssetsView(){
     if (creditCard) codeTag = ' <span class="tag" title="지출하면 (-)로 내려가고, 그 사용액이 부채로 집계돼요">카드사용액→부채</span>';
     else if (checkCard) codeTag = ' <span class="tag" title="독립된 잔액이 없고 연계 계좌에 합산돼요">체크카드</span>';
     else if (isUnusedAsset(a)) codeTag = ' <span class="tag" title="수입/지출 입력 화면의 계좌 목록에 나타나지 않아요">거래 미사용</span>';
-    let balCell;
+    let balCell, evalCell, profitCell;
     if (checkCard){
       const linked = state.accounts.find(x=>x.id===a.linkedAccountId);
       balCell = linked ? `<span class="muted-small">연계: <b>${escapeHtml(linked.name)}</b></span>` : `<span class="muted-small" style="color:var(--critical)">연계 계좌 미설정</span>`;
+      evalCell = '<span class="muted-small">—</span>';
+      profitCell = '<span class="muted-small">—</span>';
     } else {
       const expected = expectedAccountBalance(a.id, currentYM);
       const isManual = hasManualBalanceAt(a.id, currentYM);
@@ -3123,6 +3257,16 @@ function renderAssetsView(){
         reconHint = infoTip('거래내역 기준 자동계산값이에요(0원부터 시작 가정). 실제 잔액을 알고 있으면 직접 입력해 확정해주세요.');
       }
       balCell = `<input type="number" data-bal-account="${a.id}" value="${bal===null?'':bal}" placeholder="${creditCard?'예: -500000':'입력'}" style="width:130px;text-align:right;padding:6px 8px;border:1px solid ${isManual?'var(--border)':'var(--warning, #e0a72a)'};border-radius:6px;background:var(--surface);color:var(--text-primary)">${reconHint}`;
+      const bal2 = bal || 0;
+      if (bal2 > 0){
+        evalCell = `<input type="number" data-eval-account="${a.id}" value="${a.evalAmount?a.evalAmount:''}" placeholder="잔고와 동일" style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary)">`;
+        profitCell = (Number(a.evalAmount)||0) > 0
+          ? '<span class="muted-small">—</span>'
+          : `<input type="number" data-profit-account="${a.id}" value="${a.profitAmount?a.profitAmount:''}" placeholder="0" style="width:110px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary)">`;
+      } else {
+        evalCell = '<span class="muted-small">—</span>';
+        profitCell = '<span class="muted-small">—</span>';
+      }
     }
     return `<tr class="drag-row"${a.hidden?' style="opacity:.5"':''} data-id="${a.id}">
       <td style="white-space:nowrap">
@@ -3132,26 +3276,13 @@ function renderAssetsView(){
       <td><span class="tag">${a.type}</span></td>
       <td>${escapeHtml(a.owner||'')}</td>
       <td class="num">${balCell}</td>
+      <td class="num">${evalCell}</td>
+      <td class="num">${profitCell}</td>
       <td style="white-space:nowrap">
+        <button class="btn small ghost" data-track-account="${a.id}">잔고추적</button>
         <button class="btn small ghost" data-toggle-hide-account="${a.id}">${a.hidden?'표시':'숨기기'}</button>
         <button class="btn small ghost" data-edit-account="${a.id}">수정</button>
         <button class="btn small ghost" data-del-account="${a.id}">삭제</button>
-      </td>
-    </tr>`;
-  }).join('');
-
-  const liabBody = document.getElementById('liab-table-body');
-  document.getElementById('liab-empty').style.display = state.liabilities.length?'none':'block';
-  liabBody.innerHTML = state.liabilities.map(l=>{
-    const bal = liabBalanceAt(l.id, currentYM);
-    return `<tr>
-      <td>${escapeHtml(l.name)}</td>
-      <td><span class="tag">${l.type}</span></td>
-      <td>${escapeHtml(l.owner||'')}</td>
-      <td class="num"><input type="number" data-bal-liab="${l.id}" value="${bal===null?'':bal}" placeholder="입력" style="width:130px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary)"></td>
-      <td style="white-space:nowrap">
-        <button class="btn small ghost" data-edit-liab="${l.id}">수정</button>
-        <button class="btn small ghost" data-del-liab="${l.id}">삭제</button>
       </td>
     </tr>`;
   }).join('');
@@ -3168,6 +3299,49 @@ function renderNetWorthChart(){
     series: [ {label:'순자산', color:INCOME_COLOR(), data, fill:true} ],
     yFmt: wonManFmt
   });
+}
+
+/* 계좌 하나의 잔고 추이(최근 12개월)를 차트+월별 입력표로 보여주는 "잔고 추적" 팝업 */
+function openBalanceTrackModal(accId){
+  const acc = state.accounts.find(a=>a.id===accId);
+  if (!acc) return;
+  const months = [];
+  for (let i=11;i>=0;i--) months.push(addMonths(currentYM,-i));
+  openModal(`
+    <h3>📈 ${escapeHtml(acc.name)} — 잔고 추적</h3>
+    <p class="muted-small">최근 12개월간의 월별 잔액 추이예요. 표에서 값을 바로 수정할 수 있어요.</p>
+    <div class="chart-wrap" id="baltrack-chart" style="margin-bottom:14px"></div>
+    <div style="max-height:300px;overflow-y:auto">
+      <table><thead><tr><th>월</th><th class="num">잔액</th></tr></thead><tbody id="baltrack-body"></tbody></table>
+    </div>
+    <div class="modal-actions"><button class="btn primary" id="baltrack-close">닫기</button></div>
+  `);
+  function renderTrack(){
+    const data = months.map(m=>accountBalanceAt(accId, m) || 0);
+    renderLineChart('baltrack-chart', {
+      labels: months.map(m=>parseInt(m.slice(5),10)+'월'),
+      series: [ {label:'잔액', color:INCOME_COLOR(), data, fill:true} ],
+      yFmt: wonManFmt
+    });
+    document.getElementById('baltrack-body').innerHTML = months.map(m=>{
+      const v = accountBalanceAt(accId, m);
+      const isManual = hasManualBalanceAt(accId, m);
+      return `<tr><td>${ymLabel(m)}</td><td class="num"><input type="number" data-baltrack-month="${m}" value="${v===null?'':v}" style="width:140px;text-align:right;padding:6px 8px;border:1px solid ${isManual?'var(--border)':'var(--warning, #e0a72a)'};border-radius:6px;background:var(--surface);color:var(--text-primary)"></td></tr>`;
+    }).join('');
+    document.querySelectorAll('[data-baltrack-month]').forEach(inp=>{
+      inp.addEventListener('change', (e)=>{
+        const m = e.target.dataset.baltrackMonth;
+        const val = parseFloat(e.target.value);
+        if (!state.balances[m]) state.balances[m] = {};
+        if (isNaN(val)) delete state.balances[m][accId];
+        else state.balances[m][accId] = val;
+        markDirty();
+        setTimeout(renderTrack, 0);
+      });
+    });
+  }
+  renderTrack();
+  document.getElementById('baltrack-close').onclick = ()=>{ closeModal(); renderAssetsView(); };
 }
 
 /* ============================== BUDGET ============================== */
@@ -3364,11 +3538,11 @@ function balanceSheetGroupRows(items, sideLabel, sideTotal, emptyMsg){
 }
 function renderBalanceSheet(ym){
   document.getElementById('balance-sheet-month-label').textContent = ymLabel(ym);
-  // 신용카드(자산코드)는 계좌 목록엔 있지만 실제로는 부채(사용액)이므로 부채 쪽으로 옮겨서 보여준다.
-  // 체크카드는 독립된 잔액이 없고(연계 계좌에 이미 반영됨) 대차대조표에는 표시하지 않는다.
-  const accRows = visibleAccounts().filter(a=>!isCreditCard(a) && !isCheckCard(a)).map(a=>({name:a.name, type:a.type||'기타', val: accountBalanceAt(a.id, ym) || 0}));
-  const cardLiabRows = visibleAccounts().filter(isCreditCard).map(a=>({name:a.name+' 사용액', type:a.type||'신용카드', val: -(accountBalanceAt(a.id, ym) || 0)}));
-  const liabRows = [...state.liabilities.map(l=>({name:l.name, type:l.type||'기타', val: liabBalanceAt(l.id, ym) || 0})), ...cardLiabRows];
+  // 계좌현황과 동일한 규칙: 체크카드는 독립된 잔액이 없어(연계 계좌에 이미 반영됨) 대차대조표에는 표시하지 않고,
+  // 나머지 계좌는 잔고 부호로만 자산/부채를 나눈다(신용카드·대출 계좌도 잔고가 음수면 부채 쪽으로).
+  const nonCard = visibleAccounts().filter(a=>!isCheckCard(a));
+  const accRows = nonCard.filter(a=>(accountBalanceAt(a.id, ym)||0) > 0).map(a=>({name:a.name, type:a.type||'기타', val: accountBalanceAt(a.id, ym) || 0}));
+  const liabRows = nonCard.filter(a=>(accountBalanceAt(a.id, ym)||0) < 0).map(a=>({name:a.name+(isCreditCard(a)?' 사용액':''), type:a.type||'기타', val: -(accountBalanceAt(a.id, ym) || 0)}));
   const totalAssets = accRows.reduce((s,r)=>s+r.val,0);
   const totalLiab = liabRows.reduce((s,r)=>s+r.val,0);
   const net = totalAssets - totalLiab;
@@ -3607,6 +3781,15 @@ function accountModal(existing){
       <select id="m-linked-account"><option value="">(선택 안함)</option>${state.accounts.filter(a=>a.id!==(existing&&existing.id) && !isCreditCard(a) && !isCheckCard(a)).map(a=>`<option value="${a.id}" ${existing&&existing.linkedAccountId===a.id?'selected':''}>${escapeHtml(a.name)}</option>`).join('')}</select>
     </div>
     <div class="field"><label>담당</label><select id="m-owner">${state.members.map(m=>`<option ${existing&&existing.owner===m?'selected':''}>${escapeHtml(m)}</option>`).join('')}</select></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+      <div class="field"><label>이율(수익률, %)</label><input type="number" step="0.01" id="m-interest-rate" value="${existing&&existing.interestRate!=null?existing.interestRate:''}" placeholder="예: 3.5"></div>
+      <div class="field"><label>계약기간(개월)</label><input type="number" id="m-contract-months" value="${existing&&existing.contractMonths!=null?existing.contractMonths:''}" placeholder="예: 12"></div>
+      <div class="field"><label>만기일</label><input type="date" id="m-maturity-date" value="${existing&&existing.maturityDate?existing.maturityDate:''}"></div>
+      <div class="field"><label>월 납입액</label><input type="number" id="m-monthly-payment" value="${existing&&existing.monthlyPayment!=null?existing.monthlyPayment:''}" placeholder="예: 300000"></div>
+      <div class="field"><label>이체일</label><input type="number" min="1" max="31" id="m-transfer-day" value="${existing&&existing.transferDay!=null?existing.transferDay:''}" placeholder="예: 25"></div>
+      <div class="field"><label>평가금</label><input type="number" id="m-eval-amount" value="${existing&&existing.evalAmount!=null?existing.evalAmount:''}" placeholder="잔고와 동일하면 비워두세요"></div>
+      <div class="field"><label>이익금</label><input type="number" id="m-profit-amount" value="${existing&&existing.profitAmount!=null?existing.profitAmount:''}" placeholder="예: 0"></div>
+    </div>
     <div class="modal-actions"><button class="btn ghost" id="m-cancel">취소</button><button class="btn primary" id="m-save">저장</button></div>
   `);
   document.getElementById('m-type').addEventListener('change', (e)=>{
@@ -3632,8 +3815,17 @@ function accountModal(existing){
     const assetCode = document.getElementById('m-asset-code').value;
     const linkedAccountId = assetCode==='체크카드' ? (document.getElementById('m-linked-account').value || null) : null;
     const owner = document.getElementById('m-owner').value;
-    if (isEdit){ existing.name=name; existing.type=type; existing.assetCode=assetCode; existing.linkedAccountId=linkedAccountId; existing.owner=owner; }
-    else { state.accounts.push({id:uid('acc'), name, type, assetCode, linkedAccountId, owner}); }
+    const numOrNull = (id)=>{ const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
+    const interestRate = numOrNull('m-interest-rate');
+    const contractMonths = numOrNull('m-contract-months');
+    const maturityDate = document.getElementById('m-maturity-date').value || null;
+    const monthlyPayment = numOrNull('m-monthly-payment');
+    const transferDay = numOrNull('m-transfer-day');
+    const evalAmount = numOrNull('m-eval-amount');
+    const profitAmount = numOrNull('m-profit-amount');
+    const extra = { interestRate, contractMonths, maturityDate, monthlyPayment, transferDay, evalAmount, profitAmount };
+    if (isEdit){ Object.assign(existing, {name, type, assetCode, linkedAccountId, owner}, extra); }
+    else { state.accounts.push({id:uid('acc'), name, type, assetCode, linkedAccountId, owner, ...extra}); }
     markDirty(); closeModal(); renderAll();
   };
 }
@@ -3928,7 +4120,7 @@ function importMappingModal(headers, rows){
     </div>
     <div class="grid cols-2">
       <div class="field"><label>연도가 없는 날짜는 몇 년으로?</label><input id="imp-year" type="number" value="${nowYear}" style="width:100%"></div>
-      <div class="field"><label>어느 계좌 · 카드로 등록할까요?</label><select id="imp-account">${state.accounts.length? state.accounts.map(a=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('') : '<option value="">(등록된 계좌 없음 — 자산·부채 탭에서 먼저 추가해주세요)</option>'}</select></div>
+      <div class="field"><label>어느 계좌 · 카드로 등록할까요?</label><select id="imp-account">${state.accounts.length? state.accounts.map(a=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('') : '<option value="">(등록된 계좌 없음 — 계좌현황 탭에서 먼저 추가해주세요)</option>'}</select></div>
     </div>
     <div class="grid cols-2">
       <div class="field"><label>구분(수입/지출) 판단 방법</label><select id="imp-typemode">
@@ -4001,7 +4193,7 @@ function importMappingModal(headers, rows){
   document.getElementById('imp-confirm').onclick = ()=>{
     const accountId = document.getElementById('imp-account').value || null;
     const owner = document.getElementById('imp-owner').value;
-    if (!accountId){ alert('계좌·카드를 먼저 선택(또는 자산·부채 탭에서 추가)해주세요.'); return; }
+    if (!accountId){ alert('계좌·카드를 먼저 선택(또는 계좌현황 탭에서 추가)해주세요.'); return; }
     const built = buildRows();
     if (!built.length){ alert('가져올 거래를 찾지 못했어요. 위에서 열 매칭을 확인해주세요.'); return; }
     const existingKeys = new Set(state.transactions.map(t => `${t.date}|${t.amount}|${(t.memo||'').slice(0,20)}|${t.accountId}`));
@@ -4249,6 +4441,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
     currentYM = `${y}-${e.target.value}`;
     renderAll();
   });
+  document.getElementById('dash-recent-filter').addEventListener('change', (e)=>{
+    dashRecentFilter = e.target.value;
+    renderAll();
+  });
+  document.querySelectorAll('.stat-tile-toggle').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const key = el.dataset.statKey;
+      if (!key) return;
+      dashStatRevealed[key] = !dashStatRevealed[key];
+      renderDashboard();
+    });
+  });
 
   document.querySelectorAll('.tx-subtab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -4447,13 +4651,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   /* assets */
   document.getElementById('add-account-btn').onclick = ()=>accountModal(null);
-  document.getElementById('add-liability-btn').onclick = ()=>liabModal(null);
+  document.getElementById('toggle-hidden-accounts-btn').onclick = ()=>{
+    assetsShowHiddenOnly = !assetsShowHiddenOnly;
+    renderAssetsView();
+  };
   document.getElementById('accounts-table-body').addEventListener('click', (e)=>{
     const editId = e.target.dataset.editAccount;
     const delId = e.target.dataset.delAccount;
     const hideId = e.target.dataset.toggleHideAccount;
     const reconId = e.target.dataset.reconcileAccount;
+    const trackId = e.target.dataset.trackAccount;
     if (editId) accountModal(state.accounts.find(a=>a.id===editId));
+    if (trackId) openBalanceTrackModal(trackId);
     if (delId){
       if (confirm('이 계좌를 삭제할까요? (거래 내역은 유지됩니다)')){
         state.accounts = state.accounts.filter(a=>a.id!==delId);
@@ -4486,6 +4695,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
   document.getElementById('accounts-table-body').addEventListener('change', (e)=>{
     const accId = e.target.dataset.balAccount;
+    const evalId = e.target.dataset.evalAccount;
+    const profitId = e.target.dataset.profitAccount;
     if (accId){
       const val = parseFloat(e.target.value);
       if (!state.balances[currentYM]) state.balances[currentYM] = {};
@@ -4496,37 +4707,37 @@ document.addEventListener('DOMContentLoaded', ()=>{
       // before we replace the table's innerHTML (avoids a "node no longer a child" DOM race)
       setTimeout(renderAssetsView, 0);
     }
-  });
-  makeDragReorderable(document.getElementById('accounts-table-body'), (ids)=>{
-    const byId = {}; state.accounts.forEach(a=>{ byId[a.id]=a; });
-    const reordered = ids.map(id=>byId[id]).filter(Boolean);
-    if (reordered.length === state.accounts.length){
-      state.accounts = reordered;
-      markDirty(); renderAssetsView();
+    if (evalId){
+      const acc = state.accounts.find(a=>a.id===evalId);
+      if (acc){
+        const val = parseFloat(e.target.value);
+        acc.evalAmount = isNaN(val) ? null : val;
+        markDirty();
+        setTimeout(renderAssetsView, 0);
+      }
     }
-  });
-  document.getElementById('liab-table-body').addEventListener('click', (e)=>{
-    const editId = e.target.dataset.editLiab;
-    const delId = e.target.dataset.delLiab;
-    if (editId) liabModal(state.liabilities.find(l=>l.id===editId));
-    if (delId){
-      if (confirm('이 부채를 삭제할까요?')){
-        state.liabilities = state.liabilities.filter(l=>l.id!==delId);
-        Object.values(state.liabBalances).forEach(m=>delete m[delId]);
-        markDirty(); renderAll();
+    if (profitId){
+      const acc = state.accounts.find(a=>a.id===profitId);
+      if (acc){
+        const val = parseFloat(e.target.value);
+        acc.profitAmount = isNaN(val) ? null : val;
+        markDirty();
+        setTimeout(renderAssetsView, 0);
       }
     }
   });
-  document.getElementById('liab-table-body').addEventListener('change', (e)=>{
-    const liabId = e.target.dataset.balLiab;
-    if (liabId){
-      const val = parseFloat(e.target.value);
-      if (!state.liabBalances[currentYM]) state.liabBalances[currentYM] = {};
-      if (isNaN(val)) delete state.liabBalances[currentYM][liabId];
-      else state.liabBalances[currentYM][liabId] = val;
-      markDirty();
-      setTimeout(renderAssetsView, 0);
-    }
+  makeDragReorderable(document.getElementById('accounts-table-body'), (ids)=>{
+    // 목록에는 지금 화면에 보이는(숨김 여부에 따라 걸러진) 계좌만 있으므로, 화면에 없는 나머지 계좌의
+    // 상대적 위치는 그대로 두고 보이는 계좌들이 있던 자리에만 새 순서를 끼워 넣는다.
+    const idSet = new Set(ids);
+    const positions = [];
+    state.accounts.forEach((a,idx)=>{ if (idSet.has(a.id)) positions.push(idx); });
+    if (positions.length !== ids.length) return;
+    const byId = {}; state.accounts.forEach(a=>{ byId[a.id]=a; });
+    const next = [...state.accounts];
+    positions.forEach((pos,i)=>{ next[pos] = byId[ids[i]]; });
+    state.accounts = next;
+    markDirty(); renderAssetsView();
   });
 
   /* budget */
