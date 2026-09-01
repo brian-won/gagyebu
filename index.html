@@ -252,7 +252,7 @@
 
   .drag-handle { cursor:grab; color:var(--muted); font-size:15px; padding:8px 10px; flex-shrink:0; user-select:none; touch-action:none; display:inline-block; }
   .drag-row.dragging-row { position:relative; z-index:20; box-shadow:0 6px 18px rgba(0,0,0,0.18); background:var(--card); border-color:var(--text-primary); cursor:grabbing; }
-  .drag-row { transition:transform 0.05s ease; touch-action:none; }
+  .drag-row { transition:transform 0.05s ease; }
   body.drag-reorder-active { overflow:hidden; touch-action:none; overscroll-behavior:none; }
 
   .subtabs { display:flex; gap:6px; margin-bottom:16px; }
@@ -4902,7 +4902,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
   let resizeTimer;
   window.addEventListener('resize', ()=>{
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(renderAll, 200);
+    resizeTimer = setTimeout(()=>{
+      // 모바일에서 입력칸(예: 계좌 잔액)을 탭하면 소프트 키보드가 올라오면서 window resize가
+      // 발생하는데, 이때 renderAll()이 테이블을 통째로 다시 그리면 방금 포커스를 받은 입력칸이
+      // 새 DOM 노드로 교체되어 포커스가 즉시 풀리고 키패드가 바로 닫혀버린다.
+      // 지금 어떤 입력칸을 편집 중이면(포커스가 input/textarea/select에 있으면) 리렌더를 건너뛴다.
+      const ae = document.activeElement;
+      const isEditingField = ae && ['INPUT','TEXTAREA','SELECT'].includes(ae.tagName);
+      if (isEditingField) return;
+      renderAll();
+    }, 200);
   });
 
   renderAll();
