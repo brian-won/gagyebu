@@ -373,12 +373,6 @@
   .sync-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
   .sync-toast.warn { background:var(--warning); color:#3a2900; }
 
-  .recent-file-list { display:flex; flex-direction:column; gap:8px; max-height:320px; overflow-y:auto; }
-  .recent-file-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
-  .rf-info { flex:1; min-width:0; }
-  .rf-name { font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .rf-time { font-size:11.5px; color:var(--muted); margin-top:2px; }
-
   /* ---------------- cloud sync (household code) ---------------- */
   .cloud-status-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .cloud-pill { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; }
@@ -609,7 +603,7 @@
               <h3>거래내역 <span class="muted-small" id="tx-count"></span></h3>
               <button type="button" class="btn small" id="mobile-filter-btn">검색 조건</button>
             </div>
-            <table><thead><tr><th style="width:28px"><input type="checkbox" id="tx-select-all"></th><th>날짜</th><th>구분</th><th>카테고리</th><th>내용</th><th>계좌</th><th>담당</th><th>태그</th><th class="num">금액</th></tr></thead><tbody id="tx-table-body"></tbody></table>
+            <table><thead><tr><th style="width:28px"><input type="checkbox" id="tx-select-all"></th><th>날짜</th><th>구분</th><th>대분류</th><th>소분류</th><th>내용</th><th>계좌</th><th>담당</th><th>태그</th><th class="num">금액</th></tr></thead><tbody id="tx-table-body"></tbody></table>
             <div class="empty-state" id="tx-empty" style="display:none">이 달에는 거래 내역이 없어요.</div>
           </div>
         </div>
@@ -738,36 +732,15 @@
           </div>
           <p class="muted-small" id="import-xlsx-warn" style="display:none;color:var(--critical);margin-top:10px">엑셀(.xlsx) 파싱에 필요한 라이브러리를 아직 못 불러왔어요. 인터넷 연결을 확인하시고 잠시 후 다시 시도해주세요. (CSV 파일은 바로 되는 경우가 많아요.)</p>
         </div>
-        <div class="card" style="margin-bottom:18px; grid-column: span 2">
-          <h3>🔗 공용 파일로 함께 쓰기 (실시간에 가깝게 자동 저장)<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">OneDrive · Google Drive 같은 <b>동기화 폴더 안에 데이터 파일 1개</b>를 두고, 두 분이 각자 컴퓨터에서 그 파일에 "연결"하면 입력할 때마다 자동으로 그 파일에 저장되고, 상대방이 저장한 내용도 화면에 자동으로 반영돼요. 매번 JSON 파일을 주고받을 필요가 없어요.</span></span></h3>
-          <p class="muted-small" id="fs-unsupported" style="display:none;color:var(--critical)">
-            이 브라우저는 이 기능을 지원하지 않아요. Chrome 또는 Edge 최신 버전에서 열어주세요. (아래 수동 저장/불러오기는 계속 사용할 수 있어요.)
-          </p>
-          <div id="fs-controls" style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center">
-            <button class="btn primary" id="recent-files-btn">🕒 최근 파일에서 선택</button>
-            <button class="btn" id="connect-shared-btn">📂 다른 파일 찾아보기</button>
-            <button class="btn" id="create-shared-btn">🆕 새 공용 파일 만들기</button>
-            <button class="btn ghost" id="disconnect-shared-btn" style="display:none">연결 해제</button>
-          </div>
-          <p class="muted-small" id="shared-status-line" style="margin-top:12px">아직 연결된 공용 파일이 없어요. 아래에서 새로 만들거나, 상대방이 만든 파일을 열어 연결하세요.</p>
-          <details style="margin-top:10px">
-            <summary style="cursor:pointer;font-size:12.5px;color:var(--text-secondary);font-weight:600">처음 설정하는 방법 보기</summary>
-            <ol class="muted-small" style="margin:10px 0 0; padding-left:18px; line-height:1.9">
-              <li>두 분 컴퓨터에 같은 클라우드 동기화 폴더(OneDrive, Google Drive 등)를 설치하고 폴더 하나를 공유하세요.</li>
-              <li>한 분이 이 앱에서 "새 공용 파일 만들기"를 눌러, 그 동기화 폴더 안에 데이터 파일(json)을 저장하세요.</li>
-              <li>이 앱 파일(html)도 같은 폴더에 함께 넣어두면 두 분 다 같은 앱으로 열 수 있어요.</li>
-              <li>다른 분은 "기존 공용 파일 열기"로 같은 폴더 안의 그 데이터 파일을 선택해 연결하면 끝이에요.</li>
-              <li>앱을 새로 열 때마다(브라우저 특성상) "기존 공용 파일 열기"로 한 번씩 다시 연결해주면 돼요.</li>
-            </ol>
-          </details>
-        </div>
         <div class="card" style="margin-bottom:18px">
-          <h3>💾 수동 저장 / 불러오기 (백업용)<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">공용 파일에 연결하지 않았거나, 별도로 백업하고 싶을 때 사용하세요. <b>"JSON으로 저장"</b>을 누르면 파일로 내려받고, 다음에 열 때는 그 파일을 불러오면 이어서 쓸 수 있어요.</span></span></h3>
+          <h3>💾 수동 저장 / 불러오기 (백업용)<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">별도로 백업하고 싶을 때 사용하세요. <b>"JSON으로 저장"</b>을 누르면 파일로 내려받고, 다음에 열 때는 그 파일을 불러오면 이어서 쓸 수 있어요. (엑셀 내보내기는 거래내역을 보기 좋게 복사해두는 용도로, 다시 불러올 수는 없어요 — 실제 복구는 JSON으로 해주세요.)</span></span></h3>
           <div style="display:flex; gap:10px; margin-top:14px; flex-wrap:wrap">
             <button class="btn primary" id="save-json-btn">⬇ JSON으로 저장</button>
             <button class="btn" id="load-json-btn">⬆ JSON 불러오기</button>
+            <button class="btn" id="export-excel-btn">📊 엑셀로 내보내기 (거래내역)</button>
             <input type="file" id="load-json-input" accept="application/json" style="display:none">
           </div>
+          <p class="muted-small" style="margin-top:8px">엑셀 파일은 보기·공유용 사본이에요. 실제 복구·이전은 JSON 파일로 해주세요.</p>
           <p class="muted-small" id="last-saved-line" style="margin-top:12px"></p>
         </div>
         <div class="card" style="margin-bottom:18px">
@@ -1154,15 +1127,6 @@ let catManagerType = 'expense';
 let catManagerSelectedMajor = null;
 let catManagerSelectedSub = null;
 
-/* ---------------- shared-file live sync (File System Access API) ---------------- */
-const FS_SUPPORTED = (typeof window !== 'undefined') && ('showOpenFilePicker' in window) && ('showSaveFilePicker' in window);
-let fileHandle = null;
-let fileHandleName = '';
-let lastKnownMTime = 0;
-let autoSaveTimer = null;
-let pollTimer = null;
-let syncing = false;
-
 /* ---------------- cloud sync (Firebase, works on PC + mobile browsers) ---------------- */
 let cloudDocRef = null;
 let cloudUnsubscribe = null;
@@ -1176,261 +1140,9 @@ function markDirty(){
   dirty = true;
   state.updatedAt = new Date().toISOString();
   renderTopbar();
-  if (fileHandle) scheduleAutoSave();
   if (cloudDocRef && !cloudApplyingRemote) scheduleCloudSave();
 }
 function markSaved(){ dirty = false; renderTopbar(); }
-
-async function writeStateToHandle(handle){
-  const writable = await handle.createWritable();
-  state.updatedAt = new Date().toISOString();
-  await writable.write(JSON.stringify(state, null, 2));
-  await writable.close();
-}
-
-async function autoSaveIfConnected(){
-  if (!fileHandle) return;
-  syncing = true; renderTopbar();
-  try{
-    await writeStateToHandle(fileHandle);
-    const f = await fileHandle.getFile();
-    lastKnownMTime = f.lastModified;
-    dirty = false;
-  } catch(err){
-    console.error('자동 저장 실패', err);
-  }
-  syncing = false;
-  renderTopbar();
-}
-
-function scheduleAutoSave(){
-  if (!fileHandle) return;
-  clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(autoSaveIfConnected, 1000);
-}
-
-function startPolling(){
-  clearInterval(pollTimer);
-  pollTimer = setInterval(async ()=>{
-    if (!fileHandle) return;
-    try{
-      const f = await fileHandle.getFile();
-      if (f.lastModified === lastKnownMTime) return;
-      if (dirty){
-        showSyncBanner('다른 컴퓨터에서 방금 저장한 내용이 있어요. 지금 입력 중인 내용을 먼저 저장(자동 저장 대기 중)한 뒤, 화면을 새로고침해서 최신 내용을 확인해주세요.', 'warn');
-        return;
-      }
-      const text = await f.text();
-      if (!text.trim()) return;
-      const data = JSON.parse(text);
-      state = Object.assign(emptyState(), data);
-      const seeded = runOneTimeMigrations();
-      lastKnownMTime = f.lastModified;
-      renderAll();
-      showSyncBanner('다른 컴퓨터에서 저장한 최신 내용을 불러왔어요.', 'info');
-      if (seeded) markDirty();
-    } catch(err){ /* 파일이 일시적으로 잠겨있을 수 있음 - 다음 주기에 재시도 */ }
-  }, 12000);
-}
-
-function stopPolling(){ clearInterval(pollTimer); pollTimer = null; }
-
-/* ---------------- remember recently-connected files (this computer / this browser only) ----------------
-   File handles themselves are opaque browser references (no account numbers or passwords involved) —
-   storing them lets us show a "최근 파일" picker instead of browsing to the shared folder every time. */
-const IDB_NAME = 'household-budget-recent-files';
-const IDB_STORE = 'files';
-function idbOpen(){
-  return new Promise((resolve,reject)=>{
-    if (!('indexedDB' in window)){ reject(new Error('no-indexeddb')); return; }
-    const req = indexedDB.open(IDB_NAME, 1);
-    req.onupgradeneeded = ()=>{
-      const db = req.result;
-      if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE, {keyPath:'id', autoIncrement:true});
-    };
-    req.onsuccess = ()=>resolve(req.result);
-    req.onerror = ()=>reject(req.error);
-  });
-}
-async function idbGetAllRecent(){
-  try{
-    const db = await idbOpen();
-    return await new Promise((resolve,reject)=>{
-      const tx = db.transaction(IDB_STORE,'readonly');
-      const req = tx.objectStore(IDB_STORE).getAll();
-      req.onsuccess = ()=>resolve((req.result||[]).sort((a,b)=>b.lastUsed-a.lastUsed));
-      req.onerror = ()=>reject(req.error);
-    });
-  } catch(e){ return []; }
-}
-async function idbSaveRecent(handle, name){
-  try{
-    const all = await idbGetAllRecent();
-    for (const entry of all){
-      try{
-        if (await entry.handle.isSameEntry(handle)){ await idbTouch(entry.id); return; }
-      } catch(e){ /* stale handle, skip */ }
-    }
-    const db = await idbOpen();
-    await new Promise((resolve,reject)=>{
-      const tx = db.transaction(IDB_STORE,'readwrite');
-      tx.objectStore(IDB_STORE).add({handle, name, lastUsed:Date.now()});
-      tx.oncomplete = resolve; tx.onerror = ()=>reject(tx.error);
-    });
-  } catch(e){ /* IndexedDB unavailable — recent-file list simply won't be offered */ }
-}
-async function idbTouch(id){
-  try{
-    const db = await idbOpen();
-    await new Promise((resolve,reject)=>{
-      const tx = db.transaction(IDB_STORE,'readwrite');
-      const store = tx.objectStore(IDB_STORE);
-      const getReq = store.get(id);
-      getReq.onsuccess = ()=>{ const rec = getReq.result; if (rec){ rec.lastUsed = Date.now(); store.put(rec); } };
-      tx.oncomplete = resolve; tx.onerror = ()=>reject(tx.error);
-    });
-  } catch(e){}
-}
-async function idbDeleteRecent(id){
-  try{
-    const db = await idbOpen();
-    await new Promise((resolve,reject)=>{
-      const tx = db.transaction(IDB_STORE,'readwrite');
-      tx.objectStore(IDB_STORE).delete(id);
-      tx.oncomplete = resolve; tx.onerror = ()=>reject(tx.error);
-    });
-  } catch(e){}
-}
-
-async function activateHandle(handle, name){
-  const perm = await handle.queryPermission({mode:'readwrite'});
-  let granted = perm === 'granted';
-  if (!granted){
-    const req = await handle.requestPermission({mode:'readwrite'});
-    granted = req === 'granted';
-  }
-  if (!granted) throw new Error('permission-denied');
-  const file = await handle.getFile();
-  const text = await file.text();
-  if (text.trim()){
-    const data = JSON.parse(text);
-    state = Object.assign(emptyState(), data);
-  }
-  const seeded = runOneTimeMigrations();
-  fileHandle = handle;
-  fileHandleName = name;
-  lastKnownMTime = (await handle.getFile()).lastModified;
-  dirty = false;
-  startPolling();
-  renderAll();
-  if (seeded) markDirty();
-}
-
-async function showRecentFilesModal(){
-  if (!FS_SUPPORTED) return;
-  const recents = await idbGetAllRecent();
-  renderRecentFilesModal(recents);
-}
-
-function renderRecentFilesModal(recents){
-  const rows = recents.map(r => {
-    const d = new Date(r.lastUsed);
-    const when = d.toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
-    return `<div class="recent-file-row" data-recent-id="${r.id}">
-      <div class="rf-info">
-        <div class="rf-name">📄 ${escapeHtml(r.name)}</div>
-        <div class="rf-time">마지막 사용: ${when}</div>
-      </div>
-      <button class="btn small primary" data-open-recent="${r.id}">열기</button>
-      <button class="btn small ghost" data-remove-recent="${r.id}">삭제</button>
-    </div>`;
-  }).join('');
-
-  openModal(`
-    <h3>사용할 파일을 선택하세요</h3>
-    ${recents.length ? `<div class="recent-file-list">${rows}</div>` : `<p class="muted-small">최근에 연결한 공용 파일이 없어요.</p>`}
-    <div class="modal-actions" style="justify-content:space-between; margin-top:16px">
-      <button class="btn ghost" id="rf-later">나중에 (수동 저장 사용)</button>
-      <div style="display:flex; gap:8px">
-        <button class="btn" id="rf-browse">다른 파일 찾아보기</button>
-        <button class="btn primary" id="rf-new">새 공용 파일 만들기</button>
-      </div>
-    </div>
-  `);
-
-  document.getElementById('rf-later').onclick = closeModal;
-  document.getElementById('rf-browse').onclick = async ()=>{ closeModal(); await connectExistingSharedFile(); };
-  document.getElementById('rf-new').onclick = async ()=>{ closeModal(); await createNewSharedFile(); };
-
-  document.querySelectorAll('[data-open-recent]').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const id = parseInt(btn.dataset.openRecent,10);
-      const entry = recents.find(r=>r.id===id);
-      if (!entry) return;
-      btn.textContent = '여는 중…'; btn.disabled = true;
-      try{
-        await activateHandle(entry.handle, entry.name);
-        await idbTouch(id);
-        closeModal();
-        showSyncBanner(`"${entry.name}" 파일에 연결했어요.`, 'info');
-      } catch(err){
-        btn.textContent = '열기'; btn.disabled = false;
-        alert(`이 파일을 열 수 없어요 (이동/삭제되었거나 권한이 필요해요). "다른 파일 찾아보기"로 다시 연결해주세요.`);
-      }
-    });
-  });
-  document.querySelectorAll('[data-remove-recent]').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const id = parseInt(btn.dataset.removeRecent,10);
-      await idbDeleteRecent(id);
-      const updated = await idbGetAllRecent();
-      renderRecentFilesModal(updated);
-    });
-  });
-}
-
-async function connectExistingSharedFile(){
-  if (!FS_SUPPORTED){ alert('이 브라우저는 지원하지 않아요. Chrome 또는 Edge 최신 버전에서 열어주세요.'); return; }
-  try{
-    const [handle] = await window.showOpenFilePicker({
-      types: [{ description:'가계부 공용 데이터', accept:{'application/json':['.json']} }],
-      excludeAcceptAllOption:false
-    });
-    await activateHandle(handle, handle.name);
-    await idbSaveRecent(handle, handle.name);
-    alert(`"${fileHandleName}" 파일에 연결됐어요. 이제부터 입력 내용이 자동으로 이 파일에 저장되고, 다음에 브라우저를 열면 "최근 파일" 목록에 뜰 거예요.`);
-  } catch(err){
-    if (err.name !== 'AbortError') alert('연결 중 문제가 생겼어요: ' + err.message);
-  }
-}
-
-async function createNewSharedFile(){
-  if (!FS_SUPPORTED){ alert('이 브라우저는 지원하지 않아요. Chrome 또는 Edge 최신 버전에서 열어주세요.'); return; }
-  try{
-    const handle = await window.showSaveFilePicker({
-      suggestedName: '가계부_공용데이터.json',
-      types: [{ description:'가계부 공용 데이터', accept:{'application/json':['.json']} }]
-    });
-    fileHandle = handle;
-    fileHandleName = handle.name;
-    await writeStateToHandle(handle);
-    lastKnownMTime = (await handle.getFile()).lastModified;
-    dirty = false;
-    startPolling();
-    renderAll();
-    await idbSaveRecent(handle, handle.name);
-    alert(`"${fileHandleName}" 파일을 만들었어요. 이 파일을 두 분이 접근 가능한 공유 폴더(예: OneDrive, Google Drive 동기화 폴더)에 저장해두면, 다른 컴퓨터에서도 같은 파일을 "기존 공용 파일 열기"로 연결해서 함께 쓸 수 있어요. 다음에 브라우저를 열면 "최근 파일" 목록에서 바로 선택할 수 있어요.`);
-  } catch(err){
-    if (err.name !== 'AbortError') alert('생성 중 문제가 생겼어요: ' + err.message);
-  }
-}
-
-function disconnectSharedFile(){
-  fileHandle = null; fileHandleName = '';
-  stopPolling();
-  renderTopbar();
-  renderSettingsView();
-}
 
 function showSyncBanner(msg, kind){
   let el = document.getElementById('sync-toast');
@@ -1783,17 +1495,13 @@ function renderTopbar(){
     if (cloudSyncing){ badge.className = 'dirty'; text.textContent = '클라우드에 저장 중…'; }
     else if (dirty){ badge.className = 'dirty'; text.textContent = '클라우드 저장 대기 중'; }
     else { badge.className = 'saved'; text.textContent = '☁️ 실시간 동기화됨'; }
-  } else if (fileHandle){
-    if (syncing){ badge.className = 'dirty'; text.textContent = `저장 중… (${fileHandleName})`; }
-    else if (dirty){ badge.className = 'dirty'; text.textContent = `자동 저장 대기 중 (${fileHandleName})`; }
-    else { badge.className = 'saved'; text.textContent = `자동 저장됨 (${fileHandleName})`; }
   } else if (dirty){
     badge.className = 'dirty'; text.textContent = '저장 안 됨 · 파일로 저장하세요';
   } else {
     badge.className = 'saved'; text.textContent = '저장됨';
   }
   const quickSaveBtn = document.getElementById('quick-save');
-  if (quickSaveBtn) quickSaveBtn.textContent = cloudDocRef ? '☁️ 동기화 상태' : (fileHandle ? '⬇ 지금 저장' : '⬇ JSON으로 저장');
+  if (quickSaveBtn) quickSaveBtn.textContent = cloudDocRef ? '☁️ 동기화 상태' : '⬇ JSON으로 저장';
   document.getElementById('member-line').textContent = state.members.join(' & ') || '가족';
 }
 
@@ -2115,6 +1823,7 @@ function applyTxTypeFields(type, catSelId, catLabelId, accLabelId, subSelId){
   const catLabel = document.getElementById(catLabelId || 'tx-category-label');
   const accLabel = document.getElementById(accLabelId || 'tx-account-label');
   const subSel = document.getElementById(subSelId || (catSelId==='day-category' ? 'day-subcat' : 'tx-subcat'));
+  const subField = subSel ? subSel.closest('.field') : null;
   if (type === '이체'){
     if (catLabel) catLabel.textContent = '받는 계좌';
     catSel.innerHTML = transactableAccounts().length
@@ -2122,11 +1831,13 @@ function applyTxTypeFields(type, catSelId, catLabelId, accLabelId, subSelId){
       : '<option value="">(등록된 계좌 없음)</option>';
     if (accLabel) accLabel.textContent = '보내는 계좌';
     if (subSel){ subSel.innerHTML = '<option value="">(해당 없음)</option>'; subSel.disabled = true; }
+    if (subField) subField.style.display = 'none';
   } else {
     if (catLabel) catLabel.textContent = '카테고리';
     populateCategorySelect(catSel, type);
     if (accLabel) accLabel.textContent = '계좌';
     if (subSel) populateSubCategorySelect(subSel, catSel.value);
+    if (subField) subField.style.display = '';
   }
 }
 
@@ -2326,11 +2037,14 @@ function renderTransactionsView(){
   selectedTxIds.forEach(id=>{ if (!visibleIds.has(id)) selectedTxIds.delete(id); });
   tbody.innerHTML = txs.map(t=>{
     const acc = state.accounts.find(a=>a.id===t.accountId);
+    const majorLabel = t.type==='이체' ? `이체 → ${escapeHtml(accountName(t.toAccountId))}` : escapeHtml(t.category||'');
+    const subLabel = t.type==='이체' ? '' : escapeHtml(t.subCategory||'');
     return `<tr class="tx-list-row" data-id="${t.id}">
       <td><input type="checkbox" class="tx-row-check" data-id="${t.id}" ${selectedTxIds.has(t.id)?'checked':''}></td>
       <td>${t.date}</td>
       <td><span class="tag ${txTagClass(t)}">${t.type}</span></td>
-      <td>${txCategoryLabel(t)}${t.installmentTotal ? ` <span class="tag" title="할부">${t.installmentSeq}/${t.installmentTotal}</span>` : ''}</td>
+      <td>${majorLabel}</td>
+      <td>${subLabel}${t.installmentTotal ? ` <span class="tag" title="할부">${t.installmentSeq}/${t.installmentTotal}</span>` : ''}</td>
       <td>${escapeHtml(t.memo||'')}</td>
       <td>${acc?escapeHtml(acc.name):'-'}</td>
       <td>${escapeHtml(t.owner||'')}</td>
@@ -3593,19 +3307,6 @@ function renderBalanceSheet(ym){
 /* ============================== SETTINGS ============================== */
 function renderSettingsView(){
   renderCloudStatus();
-  if (!FS_SUPPORTED){
-    document.getElementById('fs-unsupported').style.display = 'block';
-    document.getElementById('fs-controls').style.display = 'none';
-  }
-  const statusLine = document.getElementById('shared-status-line');
-  const disconnectBtn = document.getElementById('disconnect-shared-btn');
-  if (fileHandle){
-    statusLine.innerHTML = `✅ <b>${escapeHtml(fileHandleName)}</b> 파일에 연결되어 자동 저장 중이에요. 다른 컴퓨터에서 저장한 내용도 이 화면에 자동으로 반영돼요.`;
-    disconnectBtn.style.display = 'inline-block';
-  } else {
-    statusLine.textContent = '아직 연결된 공용 파일이 없어요. 아래에서 새로 만들거나, 상대방이 만든 파일을 열어 연결하세요.';
-    disconnectBtn.style.display = 'none';
-  }
 
   document.getElementById('members-list').innerHTML = state.members.map(m=>`
     <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--grid)">
@@ -4307,6 +4008,7 @@ function pasteAddModal(){
         <div><label>구분</label><select id="paste-type"><option value="지출">지출</option><option value="수입">수입</option><option value="이체">이체</option></select></div>
         <div><label id="paste-category-label">카테고리</label><select id="paste-category"></select></div>
       </div>
+      <div class="field" id="paste-subcat-field"><label>소분류</label><select id="paste-subcat"><option value="">(선택 안함)</option></select></div>
       <div class="form-row" style="grid-template-columns:repeat(3,1fr)">
         <div><label>금액</label><input type="text" inputmode="decimal" id="paste-amount"></div>
         <div><label id="paste-account-label">계좌</label><select id="paste-account"></select></div>
@@ -4317,7 +4019,11 @@ function pasteAddModal(){
     <div class="modal-actions"><button class="btn ghost" id="paste-cancel">취소</button><button class="btn primary" id="paste-save-btn" style="display:none">추가</button></div>
   `);
   document.getElementById('paste-cancel').onclick = closeModal;
-  document.getElementById('paste-type').addEventListener('change', (e)=>applyTxTypeFields(e.target.value,'paste-category','paste-category-label','paste-account-label'));
+  bindAmountShortcut(document.getElementById('paste-amount'));
+  document.getElementById('paste-type').addEventListener('change', (e)=>applyTxTypeFields(e.target.value,'paste-category','paste-category-label','paste-account-label','paste-subcat'));
+  document.getElementById('paste-category').addEventListener('change', (e)=>{
+    if (document.getElementById('paste-type').value!=='이체') populateSubCategorySelect(document.getElementById('paste-subcat'), e.target.value);
+  });
 
   document.getElementById('paste-analyze-btn').onclick = ()=>{
     const raw = document.getElementById('paste-raw-text').value;
@@ -4326,7 +4032,7 @@ function pasteAddModal(){
     document.getElementById('paste-save-btn').style.display = 'inline-block';
     document.getElementById('paste-date').value = parsed.date || todayStr();
     document.getElementById('paste-type').value = parsed.type;
-    applyTxTypeFields(parsed.type, 'paste-category','paste-category-label','paste-account-label');
+    applyTxTypeFields(parsed.type, 'paste-category','paste-category-label','paste-account-label','paste-subcat');
     populateAccountSelect(document.getElementById('paste-account'));
     populateOwnerSelect(document.getElementById('paste-owner'), false);
     document.getElementById('paste-amount').value = fmtMoneyInput(parsed.amount);
@@ -4337,11 +4043,12 @@ function pasteAddModal(){
     const date = document.getElementById('paste-date').value;
     const type = document.getElementById('paste-type').value;
     const categorySelVal = document.getElementById('paste-category').value;
+    const subCategory = type!=='이체' ? document.getElementById('paste-subcat').value : '';
     const amount = parseMoneyInput(document.getElementById('paste-amount').value);
     const accountId = document.getElementById('paste-account').value || null;
     const owner = document.getElementById('paste-owner').value;
     const memo = document.getElementById('paste-memo').value.trim();
-    const result = buildTxPayload({date,type,categorySelVal,amount,accountId,owner,memo,fixedVar:'변동'});
+    const result = buildTxPayload({date,type,categorySelVal,subCategory,amount,accountId,owner,memo,fixedVar:'변동'});
     if (result.error){ alert(result.error); return; }
     state.transactions.push({id:uid('tx'), ...result.payload});
     markDirty(); closeModal(); renderAll();
@@ -4359,6 +4066,39 @@ function exportJson(){
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
   markSaved();
+}
+
+/* 거래내역을 보기 좋은 엑셀 사본으로 내보내기 — 복구용이 아니라 열람·공유용이라 되돌려 불러오지는 않는다.
+   앱 상태 전체(계좌·예산·카테고리 등)를 온전히 되돌리려면 위의 JSON 저장/불러오기를 써야 한다. */
+function exportTransactionsExcel(){
+  if (typeof XLSX === 'undefined'){
+    alert('엑셀 내보내기에 필요한 라이브러리를 아직 못 불러왔어요. 인터넷 연결을 확인하시고 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  const rows = [...state.transactions]
+    .sort((a,b)=> a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+    .map(t=>{
+      const acc = state.accounts.find(a=>a.id===t.accountId);
+      const signedAmount = t.type==='지출' ? -Math.abs(t.amount) : Math.abs(t.amount);
+      return {
+        날짜: t.date,
+        구분: t.type,
+        대분류: t.type==='이체' ? '' : (t.category||''),
+        소분류: t.type==='이체' ? '' : (t.subCategory||''),
+        내용: t.memo||'',
+        계좌: acc ? acc.name : '',
+        받는계좌: t.type==='이체' ? accountName(t.toAccountId) : '',
+        담당: t.owner||'',
+        속성: t.fixedVar||'',
+        통계제외: t.excludeStat ? 'Y' : '',
+        금액: signedAmount
+      };
+    });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = [{wch:11},{wch:6},{wch:14},{wch:14},{wch:24},{wch:14},{wch:14},{wch:8},{wch:8},{wch:8},{wch:12}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '거래내역');
+  XLSX.writeFile(wb, `가계부_거래내역_${todayStr()}.xlsx`);
 }
 
 /* 대분류+소분류 체계만 따로 내보내기 (다른 사용자와 카테고리 세트를 공유할 때 사용) */
@@ -4402,9 +4142,6 @@ function importJsonFile(file){
       const data = JSON.parse(e.target.result);
       if (!data || typeof data !== 'object' || !Array.isArray(data.transactions)){
         alert('올바른 가계부 JSON 파일이 아니에요.'); return;
-      }
-      if (fileHandle){
-        disconnectSharedFile();
       }
       state = Object.assign(emptyState(), data);
       const seeded = runOneTimeMigrations();
@@ -4585,19 +4322,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   document.getElementById('quick-save').onclick = ()=>{
     if (cloudDocRef) flushCloudSave();
-    else if (fileHandle) autoSaveIfConnected();
     else exportJson();
   };
   document.getElementById('save-json-btn').onclick = exportJson;
+  document.getElementById('export-excel-btn').onclick = exportTransactionsExcel;
   document.getElementById('load-json-btn').onclick = ()=>document.getElementById('load-json-input').click();
   document.getElementById('load-json-input').onchange = (e)=>{
     if (e.target.files[0]) importJsonFile(e.target.files[0]);
     e.target.value = '';
   };
   document.getElementById('reset-btn').onclick = ()=>{
-    const warn = fileHandle ? ' 공용 파일 연결도 함께 해제됩니다.' : '';
-    if (confirm('정말 모든 데이터를 초기화할까요? 저장하지 않은 내용은 사라집니다.' + warn)){
-      if (fileHandle) disconnectSharedFile();
+    if (confirm('정말 모든 데이터를 초기화할까요? 저장하지 않은 내용은 사라집니다.')){
       state = emptyState(); dirty=false; currentYM = todayStr().slice(0,7); renderAll();
     }
   };
@@ -4626,13 +4361,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   };
   document.getElementById('paste-add-btn').onclick = pasteAddModal;
-
-  document.getElementById('recent-files-btn').onclick = showRecentFilesModal;
-  document.getElementById('connect-shared-btn').onclick = connectExistingSharedFile;
-  document.getElementById('create-shared-btn').onclick = createNewSharedFile;
-  document.getElementById('disconnect-shared-btn').onclick = ()=>{
-    if (confirm('공용 파일 연결을 해제할까요? (파일 자체는 그대로 남아있어요)')) disconnectSharedFile();
-  };
 
   /* 목록 탭: 상단 입력 버튼들 — 달력 탭과 동일한 팝업을 그대로 연다 */
   document.getElementById('list-add-expense-btn').addEventListener('click', ()=> openTxEntryModal('지출', calDefaultDate(), null));
@@ -4972,13 +4700,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
 
   renderAll();
-
-  /* on open, if there are previously-connected shared files, offer to pick one — avoids re-browsing every time */
-  if (FS_SUPPORTED){
-    idbGetAllRecent().then(recents=>{
-      if (recents.length > 0) showRecentFilesModal();
-    });
-  }
 
   initCloud();
 });
