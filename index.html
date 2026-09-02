@@ -646,7 +646,7 @@
               <button class="btn small primary" id="add-account-btn">+ 계좌 추가</button>
             </div>
           </div>
-          <table><thead><tr><th>순서</th><th>이름</th><th>유형</th><th>담당</th><th class="num">잔액</th><th class="num">평가금</th><th class="num">이익금</th><th></th></tr></thead><tbody id="accounts-table-body"></tbody></table>
+          <table><thead><tr><th>순서</th><th>이름</th><th>유형</th><th>담당</th><th class="num">잔액<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">거래내역 기준 자동계산값이에요(0원부터 시작 가정). 실제 잔액을 알고 있으면 직접 입력해 확정해주세요.</span></span></th><th class="num">평가금</th><th class="num">이익금</th><th></th></tr></thead><tbody id="accounts-table-body"></tbody></table>
           <div class="empty-state" id="accounts-empty" style="display:none">등록된 계좌가 없어요. 계좌를 추가해보세요.</div>
         </div>
       </div>
@@ -899,6 +899,24 @@ function ymOf(dateStr){ return dateStr.slice(0,7); }
 function ymLabel(ym){ const [y,m] = ym.split('-'); return `${y}년 ${parseInt(m,10)}월`; }
 function fmtWon(n){ n = Math.round(n||0); return n.toLocaleString('ko-KR') + '원'; }
 function fmtWonSigned(n){ n = Math.round(n||0); const s = n<0 ? '-' : ''; return s + Math.abs(n).toLocaleString('ko-KR') + '원'; }
+/* 금액 입력칸 공통 서식: 천단위 콤마로 묶고, 음수는 앞에 -기호를 붙인다 (예: -500000 -> -500,000) */
+function fmtMoneyInput(n){
+  if (n===null || n===undefined || n==='' || isNaN(n)) return '';
+  n = Math.round(n);
+  const s = n<0 ? '-' : '';
+  return s + Math.abs(n).toLocaleString('ko-KR');
+}
+function parseMoneyInput(s){
+  if (s==null) return NaN;
+  s = String(s).trim();
+  if (s==='') return NaN;
+  const neg = s.startsWith('-');
+  const cleaned = s.replace(/[,\-\s원]/g,'');
+  if (cleaned==='') return NaN;
+  const val = parseFloat(cleaned);
+  if (isNaN(val)) return NaN;
+  return neg ? -Math.abs(val) : val;
+}
 
 /* 금액 입력칸에 식(1200+3620-2512)이나 단위 단축키(15+ → 150000, 15/ → 15000)를 입력하면 계산해서 반환 */
 function resolveAmountInput(raw){
@@ -939,7 +957,7 @@ function bindAmountShortcut(inputEl){
   inputEl.addEventListener('blur', ()=>{
     if (!inputEl.value.trim()) return;
     const v = resolveAmountInput(inputEl.value);
-    if (!isNaN(v)) inputEl.value = v;
+    if (!isNaN(v)) inputEl.value = fmtMoneyInput(v);
   });
 }
 function addMonths(ym, delta){
@@ -2611,6 +2629,12 @@ function wireMultiEntryUI(ids, opts){
       multiRows.splice(parseInt(delIdx,10),1);
       renderMultiRows(ids);
     });
+    body.addEventListener('focusout', (e)=>{
+      if (e.target.dataset.multiField !== 'amount' || !e.target.value.trim()) return;
+      const idx = e.target.dataset.multiIdx;
+      const v = resolveAmountInput(e.target.value);
+      if (!isNaN(v)){ e.target.value = fmtMoneyInput(v); updateMultiRowField(parseInt(idx,10), 'amount', e.target.value); }
+    });
   }
 }
 
@@ -2858,7 +2882,7 @@ function openTxEntryModal(type, dateStr, editingId){
     document.getElementById('pop-date').value = editing.date;
     document.getElementById('pop-category').value = type==='이체' ? (editing.toAccountId||'') : editing.category;
     if (type!=='이체'){ populateSubCategorySelect(document.getElementById('pop-subcat'), editing.category); document.getElementById('pop-subcat').value = editing.subCategory || ''; }
-    document.getElementById('pop-amount').value = editing.amount;
+    document.getElementById('pop-amount').value = fmtMoneyInput(editing.amount);
     document.getElementById('pop-account').value = editing.accountId || '';
     document.getElementById('pop-owner').value = editing.owner || state.members[0] || '';
     document.getElementById('pop-memo').value = editing.memo || '';
@@ -2959,7 +2983,7 @@ function applyPopFavorite(fav){
   document.getElementById('pop-account').value = fav.accountId || '';
   if (fav.owner) document.getElementById('pop-owner').value = fav.owner;
   document.getElementById('pop-memo').value = fav.memo || '';
-  if (fav.amount) document.getElementById('pop-amount').value = fav.amount;
+  if (fav.amount) document.getElementById('pop-amount').value = fmtMoneyInput(fav.amount);
   document.getElementById('pop-fixedvar').value = mapFixedVarToPopupOption(fav.fixedVar, false, txModalType);
 }
 
@@ -3097,7 +3121,7 @@ function openFavoriteEditModal(favId){
     populateSubCategorySelect(document.getElementById('fe-subcat'), fav.category||'');
     document.getElementById('fe-subcat').value = fav.subCategory || '';
   }
-  document.getElementById('fe-amount').value = fav.amount || '';
+  document.getElementById('fe-amount').value = fmtMoneyInput(fav.amount);
   document.getElementById('fe-account').value = fav.accountId || '';
   if (fav.owner) document.getElementById('fe-owner').value = fav.owner;
   document.getElementById('fe-memo').value = fav.memo || '';
@@ -3253,16 +3277,14 @@ function renderAssetsView(){
       if (expected !== null && bal !== null && expected !== bal){
         const diff = bal - expected;
         reconHint = `<div class="recon-hint">예상 <b>${fmtWon(expected)}</b> vs 실제 <b>${fmtWon(bal)}</b> (차액 ${fmtWonSigned(diff)})<button class="btn small ghost" data-reconcile-account="${a.id}" data-reconcile-diff="${diff}">차액 조정거래로 기록</button></div>`;
-      } else if (!isManual){
-        reconHint = infoTip('거래내역 기준 자동계산값이에요(0원부터 시작 가정). 실제 잔액을 알고 있으면 직접 입력해 확정해주세요.');
       }
-      balCell = `<input type="number" data-bal-account="${a.id}" value="${bal===null?'':bal}" placeholder="${creditCard?'예: -500000':'입력'}" style="width:130px;text-align:right;padding:6px 8px;border:1px solid ${isManual?'var(--border)':'var(--warning, #e0a72a)'};border-radius:6px;background:var(--surface);color:var(--text-primary)">${reconHint}`;
+      balCell = `<input type="text" inputmode="decimal" data-bal-account="${a.id}" value="${fmtMoneyInput(bal)}" placeholder="${creditCard?'예: -500,000':'입력'}" style="width:130px;text-align:right;padding:6px 8px;border:1px solid ${isManual?'var(--border)':'var(--warning, #e0a72a)'};border-radius:6px;background:var(--surface);color:${bal<0?'var(--critical)':'var(--text-primary)'}">${reconHint}`;
       const bal2 = bal || 0;
       if (bal2 > 0){
-        evalCell = `<input type="number" data-eval-account="${a.id}" value="${a.evalAmount?a.evalAmount:''}" placeholder="잔고와 동일" style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary)">`;
+        evalCell = `<input type="text" inputmode="decimal" data-eval-account="${a.id}" value="${fmtMoneyInput(a.evalAmount)}" placeholder="잔고와 동일" style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary)">`;
         profitCell = (Number(a.evalAmount)||0) > 0
           ? '<span class="muted-small">—</span>'
-          : `<input type="number" data-profit-account="${a.id}" value="${a.profitAmount?a.profitAmount:''}" placeholder="0" style="width:110px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary)">`;
+          : `<input type="text" inputmode="decimal" data-profit-account="${a.id}" value="${fmtMoneyInput(a.profitAmount)}" placeholder="0" style="width:110px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary)">`;
       } else {
         evalCell = '<span class="muted-small">—</span>';
         profitCell = '<span class="muted-small">—</span>';
@@ -3326,12 +3348,12 @@ function openBalanceTrackModal(accId){
     document.getElementById('baltrack-body').innerHTML = months.map(m=>{
       const v = accountBalanceAt(accId, m);
       const isManual = hasManualBalanceAt(accId, m);
-      return `<tr><td>${ymLabel(m)}</td><td class="num"><input type="number" data-baltrack-month="${m}" value="${v===null?'':v}" style="width:140px;text-align:right;padding:6px 8px;border:1px solid ${isManual?'var(--border)':'var(--warning, #e0a72a)'};border-radius:6px;background:var(--surface);color:var(--text-primary)"></td></tr>`;
+      return `<tr><td>${ymLabel(m)}</td><td class="num"><input type="text" inputmode="decimal" data-baltrack-month="${m}" value="${fmtMoneyInput(v)}" style="width:140px;text-align:right;padding:6px 8px;border:1px solid ${isManual?'var(--border)':'var(--warning, #e0a72a)'};border-radius:6px;background:var(--surface);color:var(--text-primary)"></td></tr>`;
     }).join('');
     document.querySelectorAll('[data-baltrack-month]').forEach(inp=>{
       inp.addEventListener('change', (e)=>{
         const m = e.target.dataset.baltrackMonth;
-        const val = parseFloat(e.target.value);
+        const val = parseMoneyInput(e.target.value);
         if (!state.balances[m]) state.balances[m] = {};
         if (isNaN(val)) delete state.balances[m][accId];
         else state.balances[m][accId] = val;
@@ -3381,7 +3403,7 @@ function renderBudgetView(){
     return `<tr>
       <td>${escapeHtml(cat)}</td>
       <td class="num">${fmtWon(spent)}</td>
-      <td><input type="number" min="0" data-budget-cat="${escapeHtml(cat)}" value="${budget||''}" placeholder="미설정" style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary)"></td>
+      <td><input type="text" inputmode="decimal" data-budget-cat="${escapeHtml(cat)}" value="${budget?fmtMoneyInput(budget):''}" placeholder="미설정" style="width:120px;text-align:right;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text-primary)"></td>
       <td>
         ${budget>0 ? `<div class="progress-bar"><div style="width:${Math.min(pct,100)}%;background:${color}"></div></div>
         <span class="status-pill" style="color:${color}">${icon} ${label} ${pct}%</span>` : `<span class="muted-small">예산 미설정</span>`}
@@ -3785,10 +3807,10 @@ function accountModal(existing){
       <div class="field"><label>이율(수익률, %)</label><input type="number" step="0.01" id="m-interest-rate" value="${existing&&existing.interestRate!=null?existing.interestRate:''}" placeholder="예: 3.5"></div>
       <div class="field"><label>계약기간(개월)</label><input type="number" id="m-contract-months" value="${existing&&existing.contractMonths!=null?existing.contractMonths:''}" placeholder="예: 12"></div>
       <div class="field"><label>만기일</label><input type="date" id="m-maturity-date" value="${existing&&existing.maturityDate?existing.maturityDate:''}"></div>
-      <div class="field"><label>월 납입액</label><input type="number" id="m-monthly-payment" value="${existing&&existing.monthlyPayment!=null?existing.monthlyPayment:''}" placeholder="예: 300000"></div>
+      <div class="field"><label>월 납입액</label><input type="text" inputmode="decimal" id="m-monthly-payment" value="${fmtMoneyInput(existing&&existing.monthlyPayment)}" placeholder="예: 300,000"></div>
       <div class="field"><label>이체일</label><input type="number" min="1" max="31" id="m-transfer-day" value="${existing&&existing.transferDay!=null?existing.transferDay:''}" placeholder="예: 25"></div>
-      <div class="field"><label>평가금</label><input type="number" id="m-eval-amount" value="${existing&&existing.evalAmount!=null?existing.evalAmount:''}" placeholder="잔고와 동일하면 비워두세요"></div>
-      <div class="field"><label>이익금</label><input type="number" id="m-profit-amount" value="${existing&&existing.profitAmount!=null?existing.profitAmount:''}" placeholder="예: 0"></div>
+      <div class="field"><label>평가금</label><input type="text" inputmode="decimal" id="m-eval-amount" value="${fmtMoneyInput(existing&&existing.evalAmount)}" placeholder="잔고와 동일하면 비워두세요"></div>
+      <div class="field"><label>이익금</label><input type="text" inputmode="decimal" id="m-profit-amount" value="${fmtMoneyInput(existing&&existing.profitAmount)}" placeholder="예: 0"></div>
     </div>
     <div class="modal-actions"><button class="btn ghost" id="m-cancel">취소</button><button class="btn primary" id="m-save">저장</button></div>
   `);
@@ -3816,13 +3838,14 @@ function accountModal(existing){
     const linkedAccountId = assetCode==='체크카드' ? (document.getElementById('m-linked-account').value || null) : null;
     const owner = document.getElementById('m-owner').value;
     const numOrNull = (id)=>{ const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
+    const moneyOrNull = (id)=>{ const v = parseMoneyInput(document.getElementById(id).value); return isNaN(v) ? null : v; };
     const interestRate = numOrNull('m-interest-rate');
     const contractMonths = numOrNull('m-contract-months');
     const maturityDate = document.getElementById('m-maturity-date').value || null;
-    const monthlyPayment = numOrNull('m-monthly-payment');
+    const monthlyPayment = moneyOrNull('m-monthly-payment');
     const transferDay = numOrNull('m-transfer-day');
-    const evalAmount = numOrNull('m-eval-amount');
-    const profitAmount = numOrNull('m-profit-amount');
+    const evalAmount = moneyOrNull('m-eval-amount');
+    const profitAmount = moneyOrNull('m-profit-amount');
     const extra = { interestRate, contractMonths, maturityDate, monthlyPayment, transferDay, evalAmount, profitAmount };
     if (isEdit){ Object.assign(existing, {name, type, assetCode, linkedAccountId, owner}, extra); }
     else { state.accounts.push({id:uid('acc'), name, type, assetCode, linkedAccountId, owner, ...extra}); }
@@ -4252,7 +4275,7 @@ function pasteAddModal(){
         <div><label id="paste-category-label">카테고리</label><select id="paste-category"></select></div>
       </div>
       <div class="form-row" style="grid-template-columns:repeat(3,1fr)">
-        <div><label>금액</label><input type="number" id="paste-amount" min="0" step="1"></div>
+        <div><label>금액</label><input type="text" inputmode="decimal" id="paste-amount"></div>
         <div><label id="paste-account-label">계좌</label><select id="paste-account"></select></div>
         <div><label>담당</label><select id="paste-owner"></select></div>
       </div>
@@ -4273,7 +4296,7 @@ function pasteAddModal(){
     applyTxTypeFields(parsed.type, 'paste-category','paste-category-label','paste-account-label');
     populateAccountSelect(document.getElementById('paste-account'));
     populateOwnerSelect(document.getElementById('paste-owner'), false);
-    document.getElementById('paste-amount').value = parsed.amount || '';
+    document.getElementById('paste-amount').value = fmtMoneyInput(parsed.amount);
     document.getElementById('paste-memo').value = parsed.memo || '';
   };
 
@@ -4281,7 +4304,7 @@ function pasteAddModal(){
     const date = document.getElementById('paste-date').value;
     const type = document.getElementById('paste-type').value;
     const categorySelVal = document.getElementById('paste-category').value;
-    const amount = parseFloat(document.getElementById('paste-amount').value);
+    const amount = parseMoneyInput(document.getElementById('paste-amount').value);
     const accountId = document.getElementById('paste-account').value || null;
     const owner = document.getElementById('paste-owner').value;
     const memo = document.getElementById('paste-memo').value.trim();
@@ -4698,7 +4721,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const evalId = e.target.dataset.evalAccount;
     const profitId = e.target.dataset.profitAccount;
     if (accId){
-      const val = parseFloat(e.target.value);
+      const val = parseMoneyInput(e.target.value);
       if (!state.balances[currentYM]) state.balances[currentYM] = {};
       if (isNaN(val)) delete state.balances[currentYM][accId];
       else state.balances[currentYM][accId] = val;
@@ -4710,7 +4733,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if (evalId){
       const acc = state.accounts.find(a=>a.id===evalId);
       if (acc){
-        const val = parseFloat(e.target.value);
+        const val = parseMoneyInput(e.target.value);
         acc.evalAmount = isNaN(val) ? null : val;
         markDirty();
         setTimeout(renderAssetsView, 0);
@@ -4719,7 +4742,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if (profitId){
       const acc = state.accounts.find(a=>a.id===profitId);
       if (acc){
-        const val = parseFloat(e.target.value);
+        const val = parseMoneyInput(e.target.value);
         acc.profitAmount = isNaN(val) ? null : val;
         markDirty();
         setTimeout(renderAssetsView, 0);
@@ -4744,7 +4767,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('budget-table-body').addEventListener('change', (e)=>{
     const cat = e.target.dataset.budgetCat;
     if (cat){
-      const val = parseFloat(e.target.value);
+      const val = parseMoneyInput(e.target.value);
       if (isNaN(val) || val<=0) delete state.budgets[cat];
       else state.budgets[cat] = val;
       markDirty(); renderBudgetView();
