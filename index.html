@@ -126,6 +126,11 @@
     .bento-grid > * { grid-column:auto !important; grid-row:auto !important; }
     .bento-grid .bento-hero .value { font-size:30px; }
   }
+  /* 계좌현황 탭: 모바일에서는 순자산 추이 그래프보다 계좌 목록(잔액 입력)을 먼저 보여준다 */
+  @media (max-width:900px){
+    #assets-table-card { order:1; }
+    #assets-chart-card { order:2; }
+  }
 
   .stat-tile { display:flex; flex-direction:column; gap:6px; }
   .stat-tile .label { font-size:12.5px; color:var(--muted); font-weight:600; }
@@ -241,7 +246,7 @@
      검색 조건 카드는 숨긴 뒤 거래내역 옆 버튼을 눌러 팝업으로 열도록 한다
      (버튼 클릭 시 이 카드를 모달로 옮겼다가 닫으면 원래 자리로 되돌린다). */
   @media (max-width:900px){
-    #tx-list-view { display:flex; flex-direction:column; }
+    #tx-list-view.active { display:flex; flex-direction:column; }
     .tx-toolbar-card { order:1; }
     .list-split-grid { order:2; grid-template-columns:1fr; }
     .tx-summary-card { order:3; }
@@ -323,6 +328,9 @@
   .cal-tx-row .dtr-main { flex:1; min-width:0; }
   .cal-tx-row .dtr-amt { font-weight:700; font-variant-numeric: tabular-nums; white-space:nowrap; }
   .cal-tx-empty { padding:14px 4px; color:var(--muted); font-size:12.5px; }
+  /* 목록 탭 거래 표: 행 전체가 탭하면 바로 수정 팝업이 열린다는 걸 알 수 있게 커서/호버 표시 */
+  .tx-list-row { cursor:pointer; }
+  .tx-list-row:hover { background:var(--page); }
   @media (max-width:1100px){ .cal-split-grid { grid-template-columns:1fr; } }
 
   .banner { display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 16px; font-size:13px; color:var(--text-secondary); margin-bottom:18px; }
@@ -524,7 +532,7 @@
           <button class="tx-subtab-btn" data-txview="list">📋 목록</button>
           <button class="tx-subtab-btn" data-txview="favorites">⭐ 즐겨찾기</button>
         </div>
-        <button class="btn small" id="paste-add-btn">💬 문자·알림 붙여넣기로 추가</button>
+        <button class="btn small" id="paste-add-btn">💬 문자/카카오톡 붙여넣기</button>
       </div>
 
       <!-- ===== calendar sub-view ===== -->
@@ -554,8 +562,8 @@
               <div class="cal-side-toolbar">
                 <button type="button" class="btn small" id="cal-add-income-btn">➕ 수입</button>
                 <button type="button" class="btn small" id="cal-add-transfer-btn">🔀 이체</button>
-                <button type="button" class="btn small ghost" id="cal-edit-income-btn">✏️ 수정</button>
-                <button type="button" class="btn small ghost" id="cal-del-income-btn">🗑️ 삭제</button>
+                <button type="button" class="btn small" id="cal-edit-income-btn">✏️ 수정</button>
+                <button type="button" class="btn small" id="cal-del-income-btn">🗑️ 삭제</button>
               </div>
               <div id="cal-income-list"></div>
             </div>
@@ -566,8 +574,8 @@
               <div class="cal-side-toolbar">
                 <button type="button" class="btn small" id="cal-add-expense-btn">➖ 지출</button>
                 <button type="button" class="btn small" id="cal-add-multi-btn">⚡ 멀티지출</button>
-                <button type="button" class="btn small ghost" id="cal-edit-expense-btn">✏️ 수정</button>
-                <button type="button" class="btn small ghost" id="cal-del-expense-btn">🗑️ 삭제</button>
+                <button type="button" class="btn small" id="cal-edit-expense-btn">✏️ 수정</button>
+                <button type="button" class="btn small" id="cal-del-expense-btn">🗑️ 삭제</button>
               </div>
               <div id="cal-expense-list"></div>
             </div>
@@ -583,8 +591,8 @@
             <button type="button" class="btn small" id="list-add-multi-btn">⚡ 멀티지출</button>
             <button type="button" class="btn small" id="list-add-income-btn">➕ 수입</button>
             <button type="button" class="btn small" id="list-add-transfer-btn">🔀 이체</button>
-            <button type="button" class="btn small ghost" id="list-edit-btn">✏️ 수정</button>
-            <button type="button" class="btn small ghost" id="list-del-btn">🗑️ 삭제</button>
+            <button type="button" class="btn small" id="list-edit-btn">✏️ 수정</button>
+            <button type="button" class="btn small" id="list-del-btn">🗑️ 삭제</button>
             <span class="muted-small" id="list-selected-count" style="margin-left:auto"></span>
           </div>
         </div>
@@ -641,11 +649,11 @@
         <div class="acct-summary-item"><div class="label">실질(자산)<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">평가(금) - 부채. 지금 부채를 모두 청산했을 때의 실질 자산이에요.</span></span></div><div class="value" id="acct-real">0원</div></div>
       </div>
       <div class="bento-grid">
-        <div class="card" style="grid-column: span 4">
+        <div class="card" id="assets-chart-card" style="grid-column: span 4">
           <h3>순자산 추이 (최근 12개월)</h3>
           <div class="chart-wrap" id="chart-networth"></div>
         </div>
-        <div class="card" style="grid-column: span 4">
+        <div class="card" id="assets-table-card" style="grid-column: span 4">
           <div class="section-title">
             <h3>계좌 현황 — <span id="assets-month-label"></span> 기준 잔액<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">계좌번호는 적지 말고, 알아보기 쉬운 이름만 사용하세요. (예: 원 월급통장, 김 비상금통장). 대출/신용대출 등 부채도 여기서 마이너스 잔액으로 등록하세요.</span></span></h3>
             <div style="display:flex;gap:8px">
@@ -3968,7 +3976,7 @@ function importMappingModal(headers, rows){
   };
 }
 
-/* ============================== 문자·알림 붙여넣기로 추가 ============================== */
+/* ============================== 문자/카카오톡 붙여넣기 ============================== */
 
 function parsePastedTransactionText(text){
   const t = (text||'').trim();
@@ -3999,8 +4007,8 @@ function parsePastedTransactionText(text){
 
 function pasteAddModal(){
   openModal(`
-    <h3>💬 문자·알림 붙여넣기로 추가${infoTip('은행·카드 문자, 카카오톡 알림톡, 앱 알림 내용을 복사해서 붙여넣으면 날짜·금액·내용을 자동으로 채워드려요. 저장 전에 꼭 확인해주세요.')}</h3>
-    <div class="field"><textarea id="paste-raw-text" rows="3" placeholder="예: 홍길동 님, 삼성카드 승인 9,200원 일시불, 8/22 14:22 스타벅스 누적123,456원" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:7px; background:var(--surface); color:var(--text-primary); font-size:13px; resize:vertical"></textarea></div>
+    <h3>💬 문자/카카오톡 붙여넣기${infoTip('문자/카카오톡 등에서 내역을 복사하여 붙여넣고 분석하기를 눌러주세요.')}</h3>
+    <div class="field"><textarea id="paste-raw-text" rows="3" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:7px; background:var(--surface); color:var(--text-primary); font-size:13px; resize:vertical"></textarea></div>
     <button class="btn" id="paste-analyze-btn" style="margin-bottom:14px">🔍 분석하기</button>
     <div id="paste-fields" style="display:none">
       <div class="form-row" style="grid-template-columns:repeat(3,1fr)">
@@ -4412,8 +4420,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if (subItem){ txListFilterSub = (txListFilterSub===subItem.dataset.filterSub) ? null : subItem.dataset.filterSub; renderTransactionsView(); }
   });
 
-  /* 목록 탭: 거래 표 — 더블클릭하면 바로 수정 팝업, 체크박스로 여러 건 선택 */
-  document.getElementById('tx-table-body').addEventListener('dblclick', (e)=>{
+  /* 목록 탭: 거래 표 — 행을 (체크박스 제외) 탭/클릭하면 바로 수정 팝업이 열린다.
+     모바일에서 작은 체크박스를 누르지 않고도 항목을 바로 열어 수정할 수 있게 하기 위함.
+     체크박스는 그대로 두어, 여러 건을 선택해 상단 툴바에서 일괄 수정·삭제할 수 있다. */
+  document.getElementById('tx-table-body').addEventListener('click', (e)=>{
+    if (e.target.closest('.tx-row-check')) return;
     const row = e.target.closest('.tx-list-row');
     if (!row) return;
     const t = state.transactions.find(x=>x.id===row.dataset.id);
