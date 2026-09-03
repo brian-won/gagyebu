@@ -203,6 +203,26 @@
 
   .chart-wrap { position:relative; height:260px; }
   .chart-wrap.tall { height:320px; }
+  #chart-trend { height:auto; padding-bottom:4px; }
+  #chart-trend .chart-svg-wrap { height:auto; }
+
+  .dash-trend-toggle { display:flex; gap:6px; }
+  .dash-trend-toggle button { border:1px solid var(--border); background:var(--card); padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; color:var(--text-secondary); }
+  .dash-trend-toggle button.active { background:var(--text-primary); color:var(--card); border-color:var(--text-primary); }
+  .dash-cat-mobile-toggle { display:none; gap:6px; }
+  .dash-cat-mobile-toggle button { border:1px solid var(--border); background:var(--card); padding:6px 14px; border-radius:20px; font-size:12.5px; font-weight:600; color:var(--text-secondary); }
+  .dash-cat-mobile-toggle button.active { background:var(--text-primary); color:var(--card); border-color:var(--text-primary); }
+  .dash-cat-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .dash-cat-card-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px; }
+  .dash-cat-card-head h4 { margin:0; font-size:13.5px; font-weight:700; color:var(--text-primary); }
+  .dash-cat-card .chart-wrap { height:auto; min-height:190px; }
+  .pie-label:hover text { fill:var(--series-1) !important; }
+  @media (max-width:900px){
+    .dash-cat-mobile-toggle { display:flex; }
+    .dash-cat-grid { grid-template-columns:1fr; }
+    .dash-cat-card { display:none; }
+    .dash-cat-card.active { display:block; }
+  }
 
   .legend-row { display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:12px; font-size:12.5px; }
   .legend-item { display:flex; align-items:center; gap:6px; color:var(--text-secondary); }
@@ -517,12 +537,44 @@
           <div class="sub" id="stat-networth-sub"></div>
         </div>
         <div class="card" style="grid-column: span 3">
-          <h3>최근 6개월 수입 · 지출 추이</h3>
+          <div class="section-title">
+            <h3 id="dash-trend-title">최근 6개월 수입 · 지출 추이</h3>
+            <div class="dash-trend-toggle" id="dash-trend-toggle">
+              <button type="button" data-trend-months="3">3개월</button>
+              <button type="button" class="active" data-trend-months="6">6개월</button>
+              <button type="button" data-trend-months="12">1년</button>
+            </div>
+          </div>
           <div class="chart-wrap" id="chart-trend"></div>
         </div>
-        <div class="card">
-          <h3>이번 달 지출 대분류</h3>
-          <div class="chart-wrap" id="chart-cat"></div>
+        <div class="card" style="grid-column: span 4">
+          <div class="section-title">
+            <h3>이번 달 지출 · 수입 카테고리</h3>
+            <div class="dash-cat-mobile-toggle" id="dash-cat-mobile-toggle">
+              <button type="button" class="active" data-cat-toggle="지출">지출</button>
+              <button type="button" data-cat-toggle="수입">수입</button>
+            </div>
+          </div>
+          <div class="dash-cat-grid">
+            <div class="dash-cat-card active" id="dash-cat-card-expense">
+              <div class="dash-cat-card-head">
+                <h4 id="dash-cat-title-expense">지출 대분류</h4>
+                <div class="dash-cat-crumb" id="dash-cat-crumb-expense" style="display:none">
+                  <button type="button" class="btn small ghost" data-cat-back="지출">‹ 대분류로</button>
+                </div>
+              </div>
+              <div class="chart-wrap" id="chart-cat-expense"></div>
+            </div>
+            <div class="dash-cat-card" id="dash-cat-card-income">
+              <div class="dash-cat-card-head">
+                <h4 id="dash-cat-title-income">수입 대분류</h4>
+                <div class="dash-cat-crumb" id="dash-cat-crumb-income" style="display:none">
+                  <button type="button" class="btn small ghost" data-cat-back="수입">‹ 대분류로</button>
+                </div>
+              </div>
+              <div class="chart-wrap" id="chart-cat-income"></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -755,6 +807,10 @@
           <p class="muted-small" id="last-saved-line" style="margin-top:12px"></p>
         </div>
         <div class="card" style="margin-bottom:18px">
+          <h3>🧪 테스트 데이터<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">화면·차트를 확인할 때마다 지출·수입·이체를 직접 입력하지 않아도 되도록, 현재 보고 있는 달에 예시 거래를 몇 건 자동으로 추가해줘요. 다 확인한 뒤에는 거래내역에서 "테스트 데이터" 메모가 붙은 항목들을 직접 지워주세요.</span></span></h3>
+          <button class="btn" id="add-test-data-btn">➕ 이번 달에 테스트 거래 추가</button>
+        </div>
+        <div class="card" style="margin-bottom:18px">
           <h3>👥 함께 쓰는 사람</h3>
           <div id="members-list"></div>
           <div style="display:flex; gap:8px; margin-top:10px">
@@ -860,7 +916,7 @@
    - 계좌번호/비밀번호 등 민감정보는 입력하지 않는 것을 전제로 설계되었습니다.
    ========================================================================= */
 
-const PALETTE = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'];
+const PALETTE = ['#4C86E0','#E8935A','#2FAF8A','#E3B23C','#DD84A8','#6FBF8B','#8D7FE0','#E06A66'];
 
 /* 대한민국 법정공휴일 (대체공휴일 포함) 2024~2028. 이후 연도나 임시공휴일이 생기면 이 표를 갱신해야 해요. */
 const KOREAN_HOLIDAYS = {
@@ -1122,6 +1178,10 @@ let currentYM = todayStr().slice(0,7);
 let assetsShowHiddenOnly = false;
 let dashRecentFilter = '지출';
 let dashStatRevealed = { expense:false, income:false, save:false, networth:false };
+/* 대시보드 대분류 원형 차트: 지출/수입 각각 독립적으로 드릴다운(선택한 대분류) 상태를 기억한다. null이면 대분류 단계 */
+let dashCatDrill = { '지출': null, '수입': null };
+/* 대시보드 수입·지출 추이 차트의 표시 기간(개월 수) */
+let dashTrendMonths = 6;
 let editingTxId = null;
 let selectedTxIds = new Set();
 let txMemoSuggest = null;
@@ -1444,6 +1504,19 @@ function expenseByCategory(ym){
   txs.forEach(t => { map[t.category] = (map[t.category]||0) + t.amount; });
   return Object.entries(map).sort((a,b)=>b[1]-a[1]);
 }
+function incomeByCategory(ym){
+  const txs = txInMonth(ym).filter(t=>t.type==='수입' && !t.excludeStat);
+  const map = {};
+  txs.forEach(t => { map[t.category] = (map[t.category]||0) + t.amount; });
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]);
+}
+/* 특정 유형(지출/수입)의 특정 대분류 안에서, 소분류별 합계 */
+function subCategoryByMajor(ym, txType, major){
+  const txs = txInMonth(ym).filter(t=>t.type===txType && !t.excludeStat && t.category===major);
+  const map = {};
+  txs.forEach(t => { const key = t.subCategory || '(소분류 없음)'; map[key] = (map[key]||0) + t.amount; });
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]);
+}
 
 function txOnDate(dateStr){ return state.transactions.filter(t=>t.date===dateStr); }
 function dayTotals(dateStr){
@@ -1559,7 +1632,7 @@ function renderDashboard(){
   tbody.innerHTML = recent.length ? recent.map(rowHtmlSimple).join('') : `<tr><td colspan="7" class="empty-state">거래 내역이 아직 없어요.</td></tr>`;
 
   renderTrendChart();
-  renderCatChart('chart-cat', currentYM);
+  renderDashCatSection();
 }
 
 function renderMaskableStat(key, valueText, valueClassRevealed, subText){
@@ -1792,25 +1865,249 @@ function renderRankedBars(containerId, items, formatValue){
   });
 }
 
+/* 지정한 개월 목록에 대해, 월별 지출을 대분류별로 나눠 담은 시리즈를 만든다.
+   전체 기간 합계 기준 상위 6개 대분류만 각자의 색으로 쌓고, 나머지는 "기타"로 묶는다. */
+function trendExpenseByCategoryAndMonth(months){
+  const totalByCat = {};
+  const perMonth = months.map(ym=>{
+    const map = Object.fromEntries(expenseByCategory(ym));
+    Object.entries(map).forEach(([name,val])=>{ totalByCat[name] = (totalByCat[name]||0)+val; });
+    return map;
+  });
+  const topCats = Object.entries(totalByCat).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name])=>name);
+  const series = topCats.map(name=>({ label:name, color:catColor(name), data: perMonth.map(map=>map[name]||0) }));
+  if (Object.keys(totalByCat).length > topCats.length){
+    const data = perMonth.map(map=>{
+      const total = Object.values(map).reduce((s,v)=>s+v,0);
+      const topSum = topCats.reduce((s,name)=>s+(map[name]||0),0);
+      return total - topSum;
+    });
+    if (data.some(v=>v>0)) series.push({ label:'기타', color: cssVar('--muted'), data });
+  }
+  return series;
+}
+
 function renderTrendChart(){
   const months = [];
-  for (let i=5;i>=0;i--) months.push(addMonths(currentYM, -i));
+  for (let i=dashTrendMonths-1;i>=0;i--) months.push(addMonths(currentYM, -i));
   const incomeData = months.map(m=>monthTotals(m).income);
-  const expenseData = months.map(m=>monthTotals(m).expense);
-  renderLineChart('chart-trend', {
-    labels: months.map(m=>parseInt(m.slice(5),10)+'월'),
-    series: [
-      {label:'수입', color:INCOME_COLOR(), data:incomeData},
-      {label:'지출', color:EXPENSE_COLOR(), data:expenseData}
-    ],
+  const expenseSeries = trendExpenseByCategoryAndMonth(months);
+  const periodLabel = dashTrendMonths===12 ? '1년' : `${dashTrendMonths}개월`;
+  const titleEl = document.getElementById('dash-trend-title');
+  if (titleEl) titleEl.textContent = `최근 ${periodLabel} 수입 · 지출 추이`;
+  const crossesYear = months.length>1 && months[0].slice(0,4) !== months[months.length-1].slice(0,4);
+  renderComboTrendChart('chart-trend', {
+    labels: months.map(m=> crossesYear ? `${m.slice(2,4)}.${parseInt(m.slice(5),10)}월` : `${parseInt(m.slice(5),10)}월`),
+    expenseSeries,
+    incomeData,
     yFmt: wonManFmt
   });
+}
+
+/* 지출은 대분류별 누적(스택) 막대, 수입은 꺾은선으로 겹쳐 그리는 조합 차트 */
+function renderComboTrendChart(containerId, {labels, expenseSeries, incomeData, yFmt}){
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '';
+  const n = labels.length;
+  const expenseTotals = labels.map((_,i)=> expenseSeries.reduce((s,ser)=>s+ser.data[i],0));
+  const hasData = n>0 && (expenseTotals.some(v=>v>0) || incomeData.some(v=>v>0));
+  if (!hasData){ el.innerHTML = '<div class="chart-empty">표시할 데이터가 없어요</div>'; return; }
+
+  const W = Math.max(320, el.clientWidth || 700), H = 226;
+  const padL=68, padR=16, padT=34, padB=28;
+  const plotW = W-padL-padR, plotH = H-padT-padB;
+  const maxV = niceNumber(Math.max(1, ...expenseTotals, ...incomeData));
+  const yScale = v => padT + plotH - (v/maxV)*plotH;
+  const groupW = plotW/n;
+  const barW = Math.max(6, groupW*0.5);
+  const xCenter = i => padL + i*groupW + groupW/2;
+
+  let gridLines='', gridLabels='';
+  for (let i=0;i<=4;i++){
+    const v = maxV*i/4; const y = yScale(v);
+    gridLines += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="${cssVar('--grid')}" stroke-width="1"/>`;
+    gridLabels += `<text x="${padL-8}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="11" fill="${cssVar('--muted')}">${yFmt?yFmt(v):Math.round(v)}</text>`;
+  }
+
+  let bars='', xLabels='', expenseLabels='';
+  labels.forEach((lb,gi)=>{
+    let cum = 0;
+    const x = xCenter(gi) - barW/2;
+    expenseSeries.forEach(s=>{
+      const val = s.data[gi];
+      if (val<=0) return;
+      const yTop = yScale(cum+val), yBot = yScale(cum);
+      bars += `<rect class="bar-hover" x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0,yBot-yTop).toFixed(1)}" fill="${s.color}"/>`;
+      cum += val;
+    });
+    if (expenseTotals[gi] > 0){
+      const barTopY = yScale(expenseTotals[gi]);
+      expenseLabels += `<text x="${xCenter(gi).toFixed(1)}" y="${Math.max(11,barTopY-6).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${cssVar('--text-primary')}">${escapeHtml(yFmt?yFmt(expenseTotals[gi]):fmtWon(expenseTotals[gi]))}</text>`;
+    }
+    xLabels += `<text x="${xCenter(gi).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="${n>10?9:10.5}" fill="${cssVar('--muted')}">${escapeHtml(lb)}</text>`;
+  });
+
+  const incomeColor = INCOME_COLOR();
+  const pts = incomeData.map((v,i)=>[xCenter(i), yScale(v)]);
+  let lineSvg = '', incomeLabels = '';
+  if (pts.length){
+    const linePath = pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+    lineSvg = `<path d="${linePath}" fill="none" stroke="${incomeColor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    pts.forEach((p,i)=>{
+      lineSvg += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" fill="${incomeColor}"/>`;
+      // 수입 라벨은 기본적으로 점 위에 두되, 지출 막대(및 막대 위 합계 라벨)와 겹치면 그 위로 피해서 그린다
+      const barTopY = yScale(expenseTotals[i]);
+      const overlapsBar = p[1] >= barTopY - 26;
+      const labelY = overlapsBar ? (barTopY - 20) : (p[1] - 10);
+      incomeLabels += `<text x="${p[0].toFixed(1)}" y="${Math.max(11,labelY).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${incomeColor}">${escapeHtml(yFmt?yFmt(incomeData[i]):fmtWon(incomeData[i]))}</text>`;
+    });
+  }
+
+  el.innerHTML = `<div class="chart-svg-wrap">
+    <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      ${gridLines}${bars}${lineSvg}${expenseLabels}${incomeLabels}${gridLabels}${xLabels}
+      <rect class="hover-capture" x="${padL}" y="${padT}" width="${Math.max(1,plotW)}" height="${Math.max(1,plotH)}" fill="transparent" style="cursor:pointer"/>
+    </svg></div>`;
+
+  const legend = document.createElement('div');
+  legend.className = 'legend-row';
+  legend.innerHTML = expenseSeries.map(s=>`<span class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${escapeHtml(s.label)}</span>`).join('')
+    + `<span class="legend-item"><span class="legend-dot" style="background:${incomeColor}"></span>수입</span>`;
+  el.appendChild(legend);
+
+  const svgEl = el.querySelector('svg');
+  const capture = el.querySelector('.hover-capture');
+  capture.addEventListener('click', (ev)=>{
+    const rect = svgEl.getBoundingClientRect();
+    const scaleX = rect.width / W;
+    const relX = (ev.clientX - rect.left)/(scaleX||1);
+    let idx = groupW>0 ? Math.floor((relX-padL)/groupW) : 0;
+    idx = Math.max(0, Math.min(n-1, idx));
+    const rows = expenseSeries.filter(s=>s.data[idx]>0).map(s=>`<div class="tt-row"><span class="tt-dot" style="background:${s.color}"></span>${escapeHtml(s.label)}<b style="margin-left:auto;padding-left:10px">${fmtWon(s.data[idx])}</b></div>`).join('');
+    const totalRow = `<div class="tt-row" style="margin-top:4px;padding-top:4px;border-top:1px solid ${cssVar('--border')}"><b>합계</b><b style="margin-left:auto;padding-left:10px">${fmtWon(expenseTotals[idx])}</b></div>`;
+    showTooltip(ev.clientX, ev.clientY, `<div style="font-weight:700;margin-bottom:4px">${escapeHtml(labels[idx])} 지출</div>${rows}${totalRow}`);
+  });
+  capture.addEventListener('mouseleave', hideTooltip);
 }
 
 function renderCatChart(containerId, ym){
   const entries = expenseByCategory(ym).slice(0,8);
   const items = entries.map(([name,val])=>({label:name, value:val, color:catColor(name)}));
   renderRankedBars(containerId, items, fmtWon);
+}
+
+/* 원형(도넛) 차트: items = [{label, value, color}]. 각 조각 옆에 항목명·금액·비율을 인출선으로 바로 표시한다.
+   onSelect가 있으면 조각/라벨을 눌러 드릴다운할 수 있다. */
+function renderPieChart(containerId, items, onSelect){
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const total = items.reduce((s,i)=>s+i.value,0);
+  if (!items.length || total<=0){ el.innerHTML = '<div class="chart-empty">표시할 내역이 없어요</div>'; return; }
+
+  let angle = -Math.PI/2;
+  const slices = items.map(it=>{
+    const frac = it.value/total;
+    const sweep = Math.max(frac*Math.PI*2, 0.0001);
+    const a0 = angle, a1 = angle+sweep;
+    angle = a1;
+    return { ...it, a0, a1, mid:(a0+a1)/2, pct: frac*100 };
+  });
+
+  const r = 62, rInner = 36, rowH = 30;
+  const leftSlices = slices.filter(s=>Math.cos(s.mid) < -0.001);
+  const rightSlices = slices.filter(s=>Math.cos(s.mid) >= -0.001);
+  const sideRows = Math.max(leftSlices.length, rightSlices.length, 1);
+  const H = Math.max(190, sideRows*rowH + 14);
+  const cy = H/2;
+  const labelColW = 104, gap = 12;
+  const cx = labelColW + r + gap;
+  const W = cx + r + gap + labelColW;
+
+  let arcs = '', labels = '';
+  slices.forEach((s,i)=>{
+    const x0 = cx+r*Math.cos(s.a0), y0 = cy+r*Math.sin(s.a0);
+    const x1 = cx+r*Math.cos(s.a1), y1 = cy+r*Math.sin(s.a1);
+    const xi0 = cx+rInner*Math.cos(s.a1), yi0 = cy+rInner*Math.sin(s.a1);
+    const xi1 = cx+rInner*Math.cos(s.a0), yi1 = cy+rInner*Math.sin(s.a0);
+    const large = (s.a1-s.a0) > Math.PI ? 1 : 0;
+    const d = `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} L ${xi0.toFixed(2)} ${yi0.toFixed(2)} A ${rInner} ${rInner} 0 ${large} 0 ${xi1.toFixed(2)} ${yi1.toFixed(2)} Z`;
+    arcs += `<path class="pie-slice" data-idx="${i}" d="${d}" fill="${s.color}" stroke="${cssVar('--card')}" stroke-width="1.5" style="${onSelect?'cursor:pointer':''}"/>`;
+  });
+
+  // 각 슬라이스의 실제 각도(세로 위치)에 최대한 가깝게 라벨을 배치하되, 겹치면 최소 간격만큼만 밀어낸다
+  const layoutSide = (arr)=>{
+    const rows = arr.map(s=>({ s, y: cy + r*Math.sin(s.mid) }));
+    rows.sort((a,b)=>a.y-b.y);
+    for (let i=1;i<rows.length;i++){
+      if (rows[i].y < rows[i-1].y + rowH) rows[i].y = rows[i-1].y + rowH;
+    }
+    const maxY = H - 12;
+    if (rows.length && rows[rows.length-1].y > maxY){
+      let shift = rows[rows.length-1].y - maxY;
+      for (let i=rows.length-1; i>=0 && shift>0; i--){
+        rows[i].y -= shift;
+        shift = (i>0 && rows[i].y - rows[i-1].y < rowH) ? (rowH - (rows[i].y - rows[i-1].y)) : 0;
+      }
+    }
+    rows.forEach(o=>{ o.y = Math.max(12, o.y); });
+    return rows;
+  };
+  const rMid = (r+rInner)/2;
+  const place = (arr, side)=>{
+    layoutSide(arr).forEach(({s,y})=>{
+      const idx = slices.indexOf(s);
+      const originX = cx + rMid*Math.cos(s.mid), originY = cy + rMid*Math.sin(s.mid);
+      const bendX = side==='right' ? cx + r + gap*0.6 : cx - r - gap*0.6;
+      const textX = side==='right' ? cx + r + gap : cx - r - gap;
+      const anchor = side==='right' ? 'start' : 'end';
+      labels += `<polyline points="${originX.toFixed(1)},${originY.toFixed(1)} ${bendX.toFixed(1)},${y.toFixed(1)} ${textX.toFixed(1)},${y.toFixed(1)}" fill="none" stroke="${cssVar('--text-primary')}" stroke-width="1"/>`;
+      labels += `<circle cx="${originX.toFixed(1)}" cy="${originY.toFixed(1)}" r="2.2" fill="${cssVar('--text-primary')}"/>`;
+      labels += `<g class="pie-label" data-idx="${idx}" style="${onSelect?'cursor:pointer':''}">
+        <text x="${textX.toFixed(1)}" y="${(y-3).toFixed(1)}" text-anchor="${anchor}" font-size="11.5" font-weight="700" fill="${cssVar('--text-primary')}">${escapeHtml(s.label)}</text>
+        <text x="${textX.toFixed(1)}" y="${(y+11).toFixed(1)}" text-anchor="${anchor}" font-size="10.5" fill="${cssVar('--text-secondary')}">${fmtWon(s.value)} · ${s.pct.toFixed(1)}%</text>
+      </g>`;
+    });
+  };
+  place(leftSlices, 'left');
+  place(rightSlices, 'right');
+
+  el.innerHTML = `<div class="chart-svg-wrap" style="display:flex;justify-content:center;align-items:center;height:100%"><svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${labels}${arcs}<text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="10.5" fill="${cssVar('--text-secondary')}">합계</text><text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="12" font-weight="700" fill="${cssVar('--text-primary')}">${fmtWon(total)}</text></svg></div>`;
+
+  el.querySelectorAll('.pie-slice, .pie-label').forEach(node=>{
+    const it = slices[+node.dataset.idx];
+    node.addEventListener('mousemove', (ev)=> showTooltip(ev.clientX, ev.clientY, `<div class="tt-row"><b>${escapeHtml(it.label)}</b></div><div>${fmtWon(it.value)} · ${it.pct.toFixed(1)}%</div>`));
+    node.addEventListener('mouseleave', hideTooltip);
+    if (onSelect) node.addEventListener('click', ()=> onSelect(it.label));
+  });
+}
+
+/* 대시보드 지출/수입 대분류 원형 차트 1개(지출 또는 수입)를 현재 드릴다운 상태(dashCatDrill)에 맞춰 렌더 */
+function renderDashCatChart(txType){
+  const key = txType==='지출' ? 'expense' : 'income';
+  const major = dashCatDrill[txType];
+  const titleEl = document.getElementById('dash-cat-title-'+key);
+  const crumbEl = document.getElementById('dash-cat-crumb-'+key);
+  let items;
+  if (major){
+    const entries = subCategoryByMajor(currentYM, txType, major).slice(0,8);
+    items = entries.map(([name,val],i)=>({label:name, value:val, color:PALETTE[i%PALETTE.length]}));
+    if (titleEl) titleEl.textContent = `${major} · 소분류`;
+    if (crumbEl) crumbEl.style.display = '';
+    renderPieChart('chart-cat-'+key, items, null);
+  } else {
+    const entries = (txType==='지출' ? expenseByCategory(currentYM) : incomeByCategory(currentYM)).slice(0,8);
+    items = entries.map(([name,val])=>({label:name, value:val, color:catColor(name)}));
+    if (titleEl) titleEl.textContent = `${txType} 대분류`;
+    if (crumbEl) crumbEl.style.display = 'none';
+    const onSelect = (label)=>{ dashCatDrill[txType] = label; renderDashCatChart(txType); };
+    renderPieChart('chart-cat-'+key, items, onSelect);
+  }
+}
+
+function renderDashCatSection(){
+  renderDashCatChart('지출');
+  renderDashCatChart('수입');
 }
 
 /* ============================== TRANSACTIONS ============================== */
@@ -4102,6 +4399,40 @@ function exportJson(){
 
 /* 거래내역을 보기 좋은 엑셀 사본으로 내보내기 — 복구용이 아니라 열람·공유용이라 되돌려 불러오지는 않는다.
    앱 상태 전체(계좌·예산·카테고리 등)를 온전히 되돌리려면 위의 JSON 저장/불러오기를 써야 한다. */
+/* 화면·차트 확인용 테스트 거래(지출/수입/이체)를 현재 보고 있는 달에 몇 건 자동으로 추가한다.
+   기존 대분류/소분류/계좌를 그대로 사용하고, 메모에 "테스트 데이터"를 남겨서 나중에 구분해 지울 수 있게 한다. */
+function addTestTransactions(){
+  const accounts = transactableAccounts();
+  if (!accounts.length){ alert('먼저 설정 화면에서 계좌를 1개 이상 등록해주세요.'); return; }
+  if (!confirm('이번 달(' + ymLabel(currentYM) + ')에 지출·수입·이체 테스트 내역을 추가할까요?\n확인 후에는 거래내역에서 "테스트 데이터" 메모가 붙은 항목을 직접 지워주세요.')) return;
+
+  const [y,m] = currentYM.split('-').map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  const dayStr = (d)=> `${currentYM}-${String(Math.min(d,lastDay)).padStart(2,'0')}`;
+  const acc = accounts[0], acc2 = accounts[1] || null;
+  const owner = state.members[0] || '';
+  const testTxs = [];
+
+  state.categories.expense.slice(0,3).forEach((major,i)=>{
+    testTxs.push({ id: uid('tx'), date: dayStr(3+i*4), type:'지출', category:major, subCategory: subCatsOf(major)[0]||'',
+      amount: 12000+i*8000, accountId: acc.id, owner, memo:'테스트 데이터', fixedVar:'단순 지출', excludeStat:false, toAccountId:null });
+  });
+  state.categories.income.slice(0,2).forEach((major,i)=>{
+    testTxs.push({ id: uid('tx'), date: dayStr(5+i*10), type:'수입', category:major, subCategory: subCatsOf(major)[0]||'',
+      amount: 800000+i*500000, accountId: acc.id, owner, memo:'테스트 데이터', fixedVar:'단순 수입', excludeStat:false, toAccountId:null });
+  });
+  if (acc2){
+    testTxs.push({ id: uid('tx'), date: dayStr(20), type:'이체', category:'이체', subCategory:'',
+      amount: 50000, accountId: acc.id, toAccountId: acc2.id, owner, memo:'테스트 데이터', fixedVar:'', excludeStat:false });
+  }
+
+  if (!testTxs.length){ alert('테스트 거래를 만들 대분류가 없어요. 먼저 설정에서 카테고리를 등록해주세요.'); return; }
+  state.transactions.push(...testTxs);
+  markDirty();
+  renderAll();
+  alert(`테스트 거래 ${testTxs.length}건을 ${ymLabel(currentYM)}에 추가했어요.`);
+}
+
 function exportTransactionsExcel(){
   if (typeof XLSX === 'undefined'){
     alert('엑셀 내보내기에 필요한 라이브러리를 아직 못 불러왔어요. 인터넷 연결을 확인하시고 잠시 후 다시 시도해주세요.');
@@ -4271,6 +4602,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
     dashRecentFilter = e.target.value;
     renderAll();
   });
+  document.getElementById('dash-trend-toggle').addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-trend-months]');
+    if (!btn) return;
+    dashTrendMonths = parseInt(btn.dataset.trendMonths, 10);
+    document.querySelectorAll('#dash-trend-toggle [data-trend-months]').forEach(b=>b.classList.toggle('active', b===btn));
+    renderTrendChart();
+  });
+  document.getElementById('dash-cat-mobile-toggle').addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-cat-toggle]');
+    if (!btn) return;
+    const type = btn.dataset.catToggle;
+    document.querySelectorAll('#dash-cat-mobile-toggle [data-cat-toggle]').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('dash-cat-card-expense').classList.toggle('active', type==='지출');
+    document.getElementById('dash-cat-card-income').classList.toggle('active', type==='수입');
+  });
+  document.querySelectorAll('[data-cat-back]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const type = btn.dataset.catBack;
+      dashCatDrill[type] = null;
+      renderDashCatChart(type);
+    });
+  });
   document.querySelectorAll('.stat-tile-toggle').forEach(el=>{
     el.addEventListener('click', ()=>{
       const key = el.dataset.statKey;
@@ -4360,6 +4713,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   };
   document.getElementById('save-json-btn').onclick = exportJson;
   document.getElementById('export-excel-btn').onclick = exportTransactionsExcel;
+  document.getElementById('add-test-data-btn').onclick = addTestTransactions;
   document.getElementById('load-json-btn').onclick = ()=>document.getElementById('load-json-input').click();
   document.getElementById('load-json-input').onchange = (e)=>{
     if (e.target.files[0]) importJsonFile(e.target.files[0]);
