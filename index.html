@@ -80,6 +80,7 @@
   #topbar h2 { font-size:18px; margin:0; font-weight:700; }
   #month-picker { display:flex; align-items:center; gap:6px; }
   #month-picker button { border:1px solid var(--border); background:var(--card); color:var(--text-primary); border-radius:7px; width:28px; height:28px; font-size:14px; }
+  #month-picker #today-btn { width:auto; height:auto; padding:5px 10px; font-size:12.5px; font-weight:600; }
   #month-picker span { font-size:14px; font-weight:600; min-width:78px; text-align:center; }
   #month-picker select { border:1px solid var(--border); background:var(--card); color:var(--text-primary); border-radius:7px; padding:5px 6px; font-size:13.5px; font-weight:600; }
   .tb-right { display:flex; align-items:center; gap:10px; }
@@ -212,6 +213,8 @@
   .modal { background:var(--card); border-radius:14px; padding:22px 24px; width:440px; max-width:92vw; border:1px solid var(--border); }
   .modal.modal-wide { width:760px; }
   .modal.modal-xwide { width:920px; max-width:96vw; }
+  .modal.modal-narrow { width:260px; padding:16px 18px; }
+  .modal.modal-narrow h3 { font-size:14px; margin-bottom:10px; }
   .modal h3 { margin-top:0; }
   .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; flex-wrap:wrap; }
   .modal-actions .btn { white-space:nowrap; }
@@ -460,6 +463,7 @@
         <select id="ym-year-select" aria-label="연도 선택"></select>
         <select id="ym-month-select" aria-label="월 선택"></select>
         <button id="next-month">›</button>
+        <button class="btn small" id="today-btn">오늘</button>
       </div>
     </div>
     <div class="tb-right">
@@ -488,10 +492,9 @@
                 <option value="수입">수입만 보기</option>
                 <option value="이체">이체만 보기</option>
               </select>
-              <button class="btn small" data-view="transactions">전체 보기 →</button>
             </div>
           </div>
-          <table id="recent-tx-table"><thead><tr><th>날짜</th><th>구분</th><th>카테고리</th><th>내용</th><th>담당</th><th class="num">금액</th></tr></thead><tbody></tbody></table>
+          <table id="recent-tx-table"><thead><tr><th>날짜</th><th>구분</th><th>대분류</th><th>소분류</th><th>내용</th><th>담당</th><th class="num">금액</th></tr></thead><tbody></tbody></table>
         </div>
         <div class="card stat-tile stat-tile-toggle" id="stat-tile-expense" data-stat-key="expense">
           <div class="label">이번 달 지출 <span class="stat-eye">👁</span></div>
@@ -518,7 +521,7 @@
           <div class="chart-wrap" id="chart-trend"></div>
         </div>
         <div class="card">
-          <h3>이번 달 지출 카테고리</h3>
+          <h3>이번 달 지출 대분류</h3>
           <div class="chart-wrap" id="chart-cat"></div>
         </div>
       </div>
@@ -675,8 +678,8 @@
         <div class="card stat-tile"><div class="label">잔여 예산</div><div class="value" id="budget-remaining-el">0원</div></div>
       </div>
       <div class="card" style="margin-bottom:16px">
-        <div class="section-title"><h3>카테고리별 이번 달 예산<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">지출 카테고리마다 월 한도를 설정하면 진행률을 보여드려요.</span></span></h3></div>
-        <table><thead><tr><th>카테고리</th><th class="num">이번 달 지출</th><th style="width:160px">월 예산</th><th style="width:220px">진행률</th><th></th></tr></thead><tbody id="budget-table-body"></tbody></table>
+        <div class="section-title"><h3>대분류별 이번 달 예산<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">지출 대분류마다 월 한도를 설정하면 진행률을 보여드려요.</span></span></h3></div>
+        <table><thead><tr><th>대분류</th><th class="num">이번 달 지출</th><th style="width:160px">월 예산</th><th style="width:220px">진행률</th><th></th></tr></thead><tbody id="budget-table-body"></tbody></table>
       </div>
       <div class="card">
         <div class="section-title"><h3>최근 월별 결산 비교<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">지난 3개월 결산과 이번 달 예산·결산을 나란히 비교해요.</span></span></h3></div>
@@ -701,7 +704,7 @@
           <table><thead><tr><th>월</th><th class="num">수입</th><th class="num">지출</th><th class="num">저축</th><th class="num">저축률</th></tr></thead><tbody id="report-table-body"></tbody></table>
         </div>
         <div class="card">
-          <h3>이 달 카테고리 순위</h3>
+          <h3>이 달 대분류 순위</h3>
           <div class="chart-wrap" id="chart-report-cat"></div>
         </div>
       </div>
@@ -1553,7 +1556,7 @@ function renderDashboard(){
   const recentPool = dashRecentFilter === 'all' ? state.transactions : state.transactions.filter(t=>t.type===dashRecentFilter);
   const recent = [...recentPool].sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0,8);
   const tbody = document.getElementById('recent-tx-table').querySelector('tbody');
-  tbody.innerHTML = recent.length ? recent.map(rowHtmlSimple).join('') : `<tr><td colspan="6" class="empty-state">거래 내역이 아직 없어요.</td></tr>`;
+  tbody.innerHTML = recent.length ? recent.map(rowHtmlSimple).join('') : `<tr><td colspan="7" class="empty-state">거래 내역이 아직 없어요.</td></tr>`;
 
   renderTrendChart();
   renderCatChart('chart-cat', currentYM);
@@ -1582,10 +1585,13 @@ function txCategoryLabel(t){
 function txAmountPrefix(t){ return t.type==='지출' ? '-' : ''; }
 
 function rowHtmlSimple(t){
+  const majorLabel = t.type==='이체' ? `이체 → ${escapeHtml(accountName(t.toAccountId))}` : escapeHtml(t.category||'');
+  const subLabel = t.type==='이체' ? '' : escapeHtml(t.subCategory||'');
   return `<tr>
     <td>${t.date}</td>
     <td><span class="tag ${txTagClass(t)}">${t.type}</span></td>
-    <td>${txCategoryLabel(t)}</td>
+    <td>${majorLabel}</td>
+    <td>${subLabel}</td>
     <td>${escapeHtml(t.memo||'')}</td>
     <td>${escapeHtml(t.owner||'')}</td>
     <td class="num">${txAmountPrefix(t)}${fmtWon(t.amount)}</td>
@@ -1841,7 +1847,7 @@ function applyTxTypeFields(type, catSelId, catLabelId, accLabelId, subSelId){
     if (subSel){ subSel.innerHTML = '<option value="">(해당 없음)</option>'; subSel.disabled = true; }
     if (subField) subField.style.display = 'none';
   } else {
-    if (catLabel) catLabel.textContent = '카테고리';
+    if (catLabel) catLabel.textContent = '대분류';
     populateCategorySelect(catSel, type);
     if (accLabel) accLabel.textContent = '계좌';
     if (subSel) populateSubCategorySelect(subSel, catSel.value);
@@ -2311,7 +2317,7 @@ function saveMultiRows(ids, onSaved){
   });
   const statusEl = document.getElementById(ids.status);
   if (errors.length){
-    if (statusEl){ statusEl.textContent = `${errors.join(', ')}번 행에 날짜/카테고리/계좌를 확인해주세요.`; statusEl.style.color = 'var(--critical)'; }
+    if (statusEl){ statusEl.textContent = `${errors.join(', ')}번 행에 날짜/대분류/계좌를 확인해주세요.`; statusEl.style.color = 'var(--critical)'; }
     return;
   }
   if (!toSave.length){
@@ -2385,11 +2391,11 @@ function openMultiExpenseModal(dateStr){
     <div class="pmulti-grid">
       <div style="min-width:0">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:10px;flex-wrap:wrap">
-          <span class="muted-small">날짜·카테고리·계좌·담당은 비워두면 바로 위 행 값을 이어받아요.</span>
+          <span class="muted-small">날짜·대분류·계좌·담당은 비워두면 바로 위 행 값을 이어받아요.</span>
           <button type="button" class="btn small ghost" id="pmulti-add-row-btn">+ 행 추가</button>
         </div>
         <div style="overflow-x:auto">
-          <table><thead><tr><th style="min-width:130px">날짜</th><th style="min-width:130px">카테고리</th><th style="min-width:110px">소분류</th><th style="min-width:120px">금액</th><th style="min-width:120px">계좌</th><th style="min-width:90px">담당</th><th style="min-width:160px">메모</th><th></th></tr></thead><tbody id="pmulti-rows-body"></tbody></table>
+          <table><thead><tr><th style="min-width:130px">날짜</th><th style="min-width:130px">대분류</th><th style="min-width:110px">소분류</th><th style="min-width:120px">금액</th><th style="min-width:120px">계좌</th><th style="min-width:90px">담당</th><th style="min-width:160px">메모</th><th></th></tr></thead><tbody id="pmulti-rows-body"></tbody></table>
         </div>
         <div style="display:flex;gap:8px;margin-top:14px;align-items:center;flex-wrap:wrap">
           <button type="button" class="btn primary" id="pmulti-save-btn">💾 전체 저장</button>
@@ -2422,6 +2428,24 @@ function calSelectDate(dateStr){
   calSelectedIncomeTxId = null;
   calSelectedExpenseTxId = null;
   renderCalendarView();
+}
+
+/* 모바일에서 달력 날짜를 탭하면 뜨는 선택 팝업 — 지출/멀티지출/수입/이체 순으로 바로 입력창을 열 수 있게 한다 */
+function openCalDayActionModal(dateStr){
+  openModal(`
+    <h3>${escapeHtml(formatDateKorean(dateStr))}</h3>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:stretch">
+      <button type="button" class="btn small" id="cal-day-act-expense">➖ 지출</button>
+      <button type="button" class="btn small" id="cal-day-act-multi">⚡ 멀티지출</button>
+      <button type="button" class="btn small" id="cal-day-act-income">➕ 수입</button>
+      <button type="button" class="btn small" id="cal-day-act-transfer">🔀 이체</button>
+    </div>
+  `);
+  document.getElementById('modal-box').classList.add('modal-narrow');
+  document.getElementById('cal-day-act-expense').onclick = ()=>{ closeModal(); openTxEntryModal('지출', dateStr, null); };
+  document.getElementById('cal-day-act-multi').onclick = ()=>{ closeModal(); openMultiExpenseModal(dateStr); };
+  document.getElementById('cal-day-act-income').onclick = ()=>{ closeModal(); openTxEntryModal('수입', dateStr, null); };
+  document.getElementById('cal-day-act-transfer').onclick = ()=>{ closeModal(); openTxEntryModal('이체', dateStr, null); };
 }
 
 function renderCalendarView(){
@@ -3111,7 +3135,7 @@ function renderBudgetView(){
     if (b>0){ totalBudget += b; totalSpentBudgeted += (byCat[cat]||0); budgetedCount++; }
   });
   document.getElementById('budget-total-el').textContent = fmtWon(totalBudget);
-  document.getElementById('budget-total-sub').textContent = budgetedCount>0 ? `${budgetedCount}개 카테고리에 설정됨` : '아직 설정된 예산이 없어요';
+  document.getElementById('budget-total-sub').textContent = budgetedCount>0 ? `${budgetedCount}개 대분류에 설정됨` : '아직 설정된 예산이 없어요';
   document.getElementById('budget-spent-el').textContent = fmtWon(totalSpentBudgeted);
   const totalPct = totalBudget>0 ? Math.round((totalSpentBudgeted/totalBudget)*100) : null;
   document.getElementById('budget-spent-sub').textContent = totalPct!==null ? `예산 대비 ${totalPct}%` : '';
@@ -3403,7 +3427,7 @@ function renameMajorCategory(type, oldName, newName){
 function deleteMajorCategory(type, name){
   const txType = type === 'income' ? '수입' : (type === 'transfer' ? '이체' : '지출');
   const inUse = state.transactions.filter(t=>t.category === name && t.type === txType).length;
-  if (inUse){ alert(`"${name}" 카테고리를 사용 중인 거래가 ${inUse}건 있어서 삭제할 수 없어요. 먼저 해당 거래들의 카테고리를 바꿔주세요.`); return false; }
+  if (inUse){ alert(`"${name}" 대분류를 사용 중인 거래가 ${inUse}건 있어서 삭제할 수 없어요. 먼저 해당 거래들의 대분류를 바꿔주세요.`); return false; }
   state.categories[type] = state.categories[type].filter(x=>x!==name);
   delete state.subCategories[name];
   delete state.budgets[name];
@@ -3482,7 +3506,7 @@ function closeModal(){
   const filterCard = document.getElementById('list-filter-card');
   if (placeholder && filterCard) placeholder.replaceWith(filterCard);
   document.getElementById('modal-overlay').classList.remove('active');
-  document.getElementById('modal-box').classList.remove('modal-wide','modal-xwide');
+  document.getElementById('modal-box').classList.remove('modal-wide','modal-xwide','modal-narrow');
 }
 /* 모바일에서 "검색 조건" 카드를 팝업으로 보여준다 — 새로 그리지 않고 기존 카드를 그대로
    모달 안으로 옮겨서(이벤트 리스너·렌더 로직을 그대로 재사용) 보여주고, 닫히면 되돌린다. */
@@ -3649,7 +3673,7 @@ function txBulkEditModal(ids){
       <select id="bulk-tag" style="flex:1"><option value="">(변경 안함)</option><option value="변동">변동</option><option value="고정">고정</option></select>
     </div>
     <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:10px">
-      <label style="min-width:80px;margin:0">카테고리${infoTip('카테고리는 선택한 유형(수입/지출)과 같은 거래에만 적용돼요. 이체 거래나 다른 유형의 거래는 카테고리가 바뀌지 않아요.')}</label>
+      <label style="min-width:80px;margin:0">대분류${infoTip('대분류는 선택한 유형(수입/지출)과 같은 거래에만 적용돼요. 이체 거래나 다른 유형의 거래는 대분류가 바뀌지 않아요.')}</label>
       <select id="bulk-cat-type" style="width:90px"><option value="지출">지출</option><option value="수입">수입</option></select>
       <select id="bulk-category" style="flex:1"></select>
     </div>
@@ -3685,7 +3709,7 @@ function txBulkEditModal(ids){
 
     selectedTxIds.clear();
     markDirty(); closeModal(); renderAll();
-    alert(`${targets.length}건을 수정했어요.` + (catVal && catSkipped ? ` (카테고리는 유형이 달라 ${catSkipped}건 제외)` : ''));
+    alert(`${targets.length}건을 수정했어요.` + (catVal && catSkipped ? ` (대분류는 유형이 달라 ${catSkipped}건 제외)` : ''));
   };
 }
 
@@ -4014,7 +4038,7 @@ function pasteAddModal(){
       <div class="form-row" style="grid-template-columns:repeat(3,1fr)">
         <div><label>날짜</label><input type="date" id="paste-date"></div>
         <div><label>구분</label><select id="paste-type"><option value="지출">지출</option><option value="수입">수입</option><option value="이체">이체</option></select></div>
-        <div><label id="paste-category-label">카테고리</label><select id="paste-category"></select></div>
+        <div><label id="paste-category-label">대분류</label><select id="paste-category"></select></div>
       </div>
       <div class="field" id="paste-subcat-field"><label>소분류</label><select id="paste-subcat"><option value="">(선택 안함)</option></select></div>
       <div class="form-row" style="grid-template-columns:repeat(3,1fr)">
@@ -4232,6 +4256,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   document.getElementById('prev-month').onclick = ()=>{ currentYM = addMonths(currentYM,-1); renderAll(); };
   document.getElementById('next-month').onclick = ()=>{ currentYM = addMonths(currentYM,1); renderAll(); };
+  document.getElementById('today-btn').onclick = ()=>{ currentYM = todayStr().slice(0,7); calSelectedDate = todayStr(); renderAll(); };
   document.getElementById('ym-year-select').addEventListener('change', (e)=>{
     const m = currentYM.split('-')[1];
     currentYM = `${e.target.value}-${m}`;
@@ -4286,6 +4311,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const cell = e.target.closest('.cal-cell');
     if (!cell || cell.classList.contains('outside')) return;
     calSelectDate(cell.dataset.date);
+    if (window.matchMedia('(max-width:900px)').matches) openCalDayActionModal(cell.dataset.date);
   });
   document.getElementById('cal-add-income-btn').addEventListener('click', ()=> openTxEntryModal('수입', calSelectedDate, null));
   document.getElementById('cal-add-transfer-btn').addEventListener('click', ()=> openTxEntryModal('이체', calSelectedDate, null));
