@@ -326,11 +326,12 @@
   .cal-cell:hover { background:var(--page); }
   .cal-cell.outside { background:var(--page); cursor:default; opacity:.45; }
   .cal-cell.outside:hover { background:var(--page); }
-  .cal-cell.today { box-shadow:inset 0 0 0 2px var(--series-1); }
   .cal-cell.selected { outline:2px solid var(--good); outline-offset:-2px; }
   .cal-daynum { font-size:12.5px; font-weight:700; color:var(--text-primary); }
   .cal-cell.sun .cal-daynum, .cal-cell.holiday .cal-daynum { color:var(--critical); }
   .cal-cell.sat .cal-daynum { color:var(--series-1); }
+  /* 오늘 날짜는 칸 테두리 대신 날짜 숫자 위에 동그라미를 그려서 표시한다 */
+  .cal-cell.today .cal-daynum { display:inline-flex; align-items:center; justify-content:center; width:21px; height:21px; border-radius:50%; background:var(--series-1); color:#fff !important; }
   .cal-holiday { font-size:9.5px; font-weight:600; color:var(--critical); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .cal-amounts { display:flex; flex-direction:column; gap:1px; margin-top:auto; }
   .cal-amt { font-size:10px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.4; }
@@ -355,6 +356,52 @@
   .tx-list-row { cursor:pointer; }
   .tx-list-row:hover { background:var(--page); }
   @media (max-width:1100px){ .cal-split-grid { grid-template-columns:1fr; } }
+
+  /* 달력 날짜 칸에 표시되는 하루짜리 일정 말풍선(줄바꿈으로 하나씩 쌓임) — 거래 달력과 '일정' 탭이 함께 쓴다 */
+  .sched-pills { display:flex; flex-direction:column; gap:2px; margin-top:1px; overflow:hidden; }
+  .sched-pill { font-size:9.5px; font-weight:600; color:#fff; padding:1px 5px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sched-more { font-size:9px; color:var(--muted); padding-left:3px; }
+  @media (max-width:900px){ .sched-pill{ font-size:8.5px; padding:1px 4px; } }
+  /* 여러 날짜에 걸친 일정 막대(연속 바) — 칸 좌우 패딩을 음수 마진으로 덮어서 옆 칸과 이어져 보이게 한다 */
+  .sched-bars { display:flex; flex-direction:column; gap:2px; }
+  .sched-bar { height:14px; line-height:14px; font-size:9.5px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 -7px; padding:0; cursor:pointer; }
+  .sched-bar.bar-start { margin-left:0; padding-left:5px; border-top-left-radius:4px; border-bottom-left-radius:4px; }
+  .sched-bar.bar-end { margin-right:0; border-top-right-radius:4px; border-bottom-right-radius:4px; }
+  .sched-bar-spacer { height:14px; }
+  @media (max-width:900px){ .sched-bar{ font-size:8.5px; } .sched-bar.bar-start{ padding-left:4px; } }
+  /* '일정' 탭 상단 일간/주간/월간 전환 및 주간·일간 보기의 이전/다음 이동 */
+  .sched-toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .sched-view-toggle { display:flex; gap:6px; }
+  .sched-view-toggle button { border:1px solid var(--border); background:var(--card); padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; color:var(--text-secondary); }
+  .sched-view-toggle button.active { background:var(--text-primary); color:var(--card); border-color:var(--text-primary); }
+  .sched-nav { display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--text-primary); }
+  .sched-nav button { width:26px; height:26px; border:1px solid var(--border); background:var(--card); border-radius:50%; font-size:13px; color:var(--text-secondary); }
+  #sched-grid.sched-grid-day { grid-template-columns:1fr; }
+  #sched-grid.sched-grid-day .cal-cell { min-height:280px; }
+  /* 주간 보기: 하루 한 줄짜리 행리스트 */
+  .sched-week-list { display:flex; flex-direction:column; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .sched-week-row { display:flex; align-items:flex-start; gap:14px; padding:10px 14px; border-bottom:1px solid var(--grid); cursor:pointer; background:var(--card); transition:background .12s; }
+  .sched-week-row:last-child { border-bottom:none; }
+  .sched-week-row:hover { background:var(--page); }
+  .sched-week-row.selected { background:var(--page); box-shadow:inset 3px 0 0 var(--good); }
+  .sched-week-date { display:flex; align-items:center; gap:6px; min-width:64px; flex:none; padding-top:2px; }
+  .sched-week-daynum { font-size:14px; font-weight:700; color:var(--text-primary); }
+  .sched-week-row.today .sched-week-daynum { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--series-1); color:#fff; }
+  .sched-week-dow { font-size:11.5px; color:var(--muted); font-weight:600; }
+  .sched-week-row.sun .sched-week-dow { color:var(--critical); }
+  .sched-week-row.sat .sched-week-dow { color:var(--series-1); }
+  .sched-week-holiday { font-size:10px; color:var(--critical); font-weight:600; }
+  .sched-week-items { display:flex; flex-direction:column; gap:5px; flex:1; min-width:0; padding-top:2px; }
+  .sched-week-item { font-size:12px; font-weight:600; color:#fff; padding:4px 10px; border-radius:6px; cursor:pointer; }
+  .sched-week-empty { font-size:12px; color:var(--muted); padding:4px 0; }
+  @media (max-width:900px){ .sched-week-row{ gap:10px; padding:9px 10px; } .sched-week-date{ min-width:50px; } }
+  /* 일정 추가/수정 팝업의 색상 선택 */
+  .color-swatch-row { display:flex; gap:9px; flex-wrap:wrap; padding-top:2px; }
+  .color-swatch { width:22px; height:22px; border-radius:50%; cursor:pointer; border:2px solid transparent; box-sizing:border-box; }
+  .color-swatch.selected { border-color:var(--text-primary); box-shadow:0 0 0 2px var(--card); }
+  .color-swatch-custom { position:relative; border-radius:8px; overflow:hidden; background-image:linear-gradient(45deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f); border-color:var(--border); }
+  .color-swatch-custom input[type="color"] { position:absolute; inset:0; width:100%; height:100%; border:none; padding:0; opacity:0; cursor:pointer; }
+  .color-swatch-plus { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:13px; text-shadow:0 1px 2px rgba(0,0,0,.6); pointer-events:none; }
 
   .banner { display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 16px; font-size:13px; color:var(--text-secondary); margin-bottom:18px; }
   .banner b { color:var(--text-primary); }
@@ -464,6 +511,7 @@
   <h1>💰 우리집 가계부<span id="member-line">나 &amp; 배우자</span></h1>
   <button class="nav-btn active" data-view="dashboard"><span class="nav-icon">📊</span>대시보드</button>
   <button class="nav-btn" data-view="transactions"><span class="nav-icon">🧾</span>거래내역</button>
+  <button class="nav-btn" data-view="schedule"><span class="nav-icon">🗓️</span>일정</button>
   <button class="nav-btn" data-view="assets"><span class="nav-icon">🏦</span>계좌현황</button>
   <button class="nav-btn" data-view="budget"><span class="nav-icon">🎯</span>예산</button>
   <button class="nav-btn" data-view="report"><span class="nav-icon">📈</span>리포트</button>
@@ -637,6 +685,17 @@
               </div>
               <div id="cal-expense-list"></div>
             </div>
+            <div class="card">
+              <div class="section-title">
+                <h3>일정 <span class="muted-small" id="cal-side-date-label-3"></span></h3>
+              </div>
+              <div class="cal-side-toolbar">
+                <button type="button" class="btn small" id="cal-add-event-btn">🗓️ 일정 추가</button>
+                <button type="button" class="btn small" id="cal-edit-event-btn">✏️ 수정</button>
+                <button type="button" class="btn small" id="cal-del-event-btn">🗑️ 삭제</button>
+              </div>
+              <div id="cal-event-list"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -697,6 +756,47 @@
       </div>
     </section>
 
+    <!-- ================= SCHEDULE ================= -->
+    <section class="view" id="view-schedule">
+      <div class="cal-split-grid">
+        <div class="card">
+          <div class="section-title">
+            <h3>일정<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">날짜를 클릭하면 오른쪽에 그날의 일정이 나타나요. 여러 날짜에 걸친 일정은 달력에 막대로 이어서 표시돼요. 매일·매주·매월·매년 반복을 설정할 수 있고, 반복 일정을 수정·삭제하면 반복되는 일정 전체에 적용돼요. 거래내역 → 달력 화면에도 같은 일정이 함께 표시돼요.</span></span></h3>
+          </div>
+          <div class="sched-toolbar">
+            <div class="sched-view-toggle">
+              <button type="button" data-sched-mode="day">일간</button>
+              <button type="button" data-sched-mode="week">주간</button>
+              <button type="button" class="active" data-sched-mode="month">월간</button>
+            </div>
+            <div class="sched-nav" id="sched-nav" style="display:none">
+              <button type="button" id="sched-prev-btn">‹</button>
+              <span id="sched-range-label"></span>
+              <button type="button" id="sched-next-btn">›</button>
+            </div>
+          </div>
+          <div class="cal-weekdays" id="sched-weekdays">
+            <div class="cal-wd sun">일</div><div class="cal-wd">월</div><div class="cal-wd">화</div><div class="cal-wd">수</div>
+            <div class="cal-wd">목</div><div class="cal-wd">금</div><div class="cal-wd sat">토</div>
+          </div>
+          <div class="cal-grid" id="sched-grid"></div>
+        </div>
+        <div class="cal-side-col">
+          <div class="card">
+            <div class="section-title">
+              <h3>일정 목록 <span class="muted-small" id="sched-side-date-label"></span></h3>
+            </div>
+            <div class="cal-side-toolbar">
+              <button type="button" class="btn small" id="sched-add-btn">➕ 일정 추가</button>
+              <button type="button" class="btn small" id="sched-edit-btn">✏️ 수정</button>
+              <button type="button" class="btn small" id="sched-del-btn">🗑️ 삭제</button>
+            </div>
+            <div id="sched-event-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ================= ASSETS ================= -->
     <section class="view" id="view-assets">
       <div class="acct-summary-bar">
@@ -716,7 +816,10 @@
             <h3>계좌 현황 — <span id="assets-month-label"></span> 기준 잔액<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">계좌번호는 적지 말고, 알아보기 쉬운 이름만 사용하세요. (예: 원 월급통장, 김 비상금통장). 대출/신용대출 등 부채도 여기서 마이너스 잔액으로 등록하세요.</span></span></h3>
             <div style="display:flex;gap:8px">
               <button class="btn small ghost" id="toggle-hidden-accounts-btn">숨긴 계좌(0)</button>
-              <button class="btn small primary" id="add-account-btn">+ 계좌 추가</button>
+              <span style="display:inline-flex;align-items:center">
+                <button class="btn small primary" id="add-account-btn">+ 계좌 추가</button>
+                <span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">새 계좌를 등록해요. 자산코드로 예금·투자·부채 등을 구분하고, 필요하면 이율·만기일·월 납입액 같은 상세 정보도 함께 입력할 수 있어요.</span></span>
+              </span>
             </div>
           </div>
           <table><thead><tr><th>순서</th><th>이름</th><th>유형</th><th>담당</th><th class="num">잔액<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">거래내역 기준 자동계산값이에요(0원부터 시작 가정). 실제 잔액을 알고 있으면 직접 입력해 확정해주세요.</span></span></th><th class="num">평가금<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">주식, 펀드의 현재 기준 평가금을 넣으세요.</span></span></th><th class="num">이익금<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">정기예금, 정기적금의 만기 금액을 적으세요.</span></span></th><th></th></tr></thead><tbody id="accounts-table-body"></tbody></table>
@@ -920,6 +1023,7 @@
    ========================================================================= */
 
 const PALETTE = ['#4C86E0','#E8935A','#2FAF8A','#E3B23C','#DD84A8','#6FBF8B','#8D7FE0','#E06A66'];
+const REPEAT_LABELS = { none:'반복 안 함', daily:'매일', weekly:'매주', monthly:'매월', yearly:'매년' };
 
 /* 대한민국 법정공휴일 (대체공휴일 포함) 2024~2028. 이후 연도나 임시공휴일이 생기면 이 표를 갱신해야 해요. */
 const KOREAN_HOLIDAYS = {
@@ -1080,7 +1184,10 @@ function emptyState(){
     liabBalances: {},
     transactions: [],
     budgets: {},
-    favorites: []
+    favorites: [],
+    events: [],
+    balanceAnchorNet: {},
+    customEventColors: []
   };
 }
 
@@ -1167,12 +1274,45 @@ function migrateLiabilitiesIntoAccountsOnce(){
   return true;
 }
 
+/* 예전 데이터(일정 기능 추가 전)에는 events 배열이 없을 수 있으므로 없으면 만들어준다. */
+function ensureEventsArray(){
+  if (!Array.isArray(state.events)){ state.events = []; return true; }
+  return false;
+}
+/* 예전 데이터에는 사용자가 직접 추가한 일정 색상 목록이 없을 수 있으므로 없으면 만들어준다. */
+function ensureCustomEventColorsArray(){
+  if (!Array.isArray(state.customEventColors)){ state.customEventColors = []; return true; }
+  return false;
+}
+
+/* 예전에 확정해둔 잔액(state.balances)에는 "확정 당시 거래 합계" 기록(balanceAnchorNet)이 없어서,
+   그 이후 거래를 추가해도 잔액이 그대로 멈춰 있는 버그가 있었다. 이미 저장된 데이터는 화면에 보이던
+   숫자가 갑자기 바뀌면 안 되므로, 지금 시점의 거래 합계를 그대로 "확정 당시 값"으로 채워 넣어
+   기존 잔액은 그대로 유지하고, 이 시점 이후에 추가되는 거래부터 정상적으로 반영되게 한다. */
+function migrateBalanceAnchorsOnce(){
+  if (state.balanceAnchorsMigratedV1) return false;
+  if (!state.balanceAnchorNet) state.balanceAnchorNet = {};
+  Object.keys(state.balances||{}).forEach(m=>{
+    Object.keys(state.balances[m]).forEach(accId=>{
+      if (!state.balanceAnchorNet[m]) state.balanceAnchorNet[m] = {};
+      if (state.balanceAnchorNet[m][accId] === undefined){
+        state.balanceAnchorNet[m][accId] = accountTxNetAt(accId, m);
+      }
+    });
+  });
+  state.balanceAnchorsMigratedV1 = true;
+  return true;
+}
+
 /* 파일/클라우드에서 데이터를 불러올 때마다 한 번씩만 실행돼야 하는 마이그레이션들을 모아서 실행한다. */
 function runOneTimeMigrations(){
   const a = seedDefaultCategoriesOnce();
   const b = migrateCreditCardBalanceSignOnce();
   const c = migrateLiabilitiesIntoAccountsOnce();
-  return a || b || c;
+  const d = ensureEventsArray();
+  const e = migrateBalanceAnchorsOnce();
+  const f = ensureCustomEventColorsArray();
+  return a || b || c || d || e || f;
 }
 
 let state = emptyState();
@@ -1193,6 +1333,11 @@ let charts = {};
 let calSelectedDate = null;
 let calSelectedIncomeTxId = null;
 let calSelectedExpenseTxId = null;
+let calSelectedEventId = null;
+/* '일정' 탭(#view-schedule) 달력의 선택된 날짜 및 선택된 일정 행, 보기 모드(일간/주간/월간) */
+let scheduleSelectedDate = null;
+let scheduleSelectedEventId = null;
+let scheduleViewMode = 'month';
 /* 달력에서 여는 수입/이체/지출 입력 팝업의 현재 상태 */
 let txModalType = null;
 let txModalEditingId = null;
@@ -1390,11 +1535,39 @@ function computedAccountBalanceAt(accId, ym){
 function hasManualBalanceAt(accId, ym){
   return Object.keys(state.balances).some(m => m <= ym && state.balances[m][accId] !== undefined);
 }
+/* 잔액을 수동으로 입력/확정할 때 이 함수로 저장한다 — 값과 함께 "그 순간의 거래 합계"도 같이 기록해두고,
+   accountBalanceAt()가 그 이후에 추가/수정/삭제된 거래만큼만 자동으로 반영하도록 한다.
+   (없이 저장하면, 확정해둔 달이나 그 이후 달에 거래를 추가해도 잔액이 그대로 멈춰 있는 버그가 생긴다.) */
+function setManualBalance(accId, ym, val){
+  if (!state.balances[ym]) state.balances[ym] = {};
+  if (!state.balanceAnchorNet) state.balanceAnchorNet = {};
+  if (isNaN(val)){
+    delete state.balances[ym][accId];
+    if (state.balanceAnchorNet[ym]) delete state.balanceAnchorNet[ym][accId];
+    return;
+  }
+  state.balances[ym][accId] = val;
+  if (!state.balanceAnchorNet[ym]) state.balanceAnchorNet[ym] = {};
+  state.balanceAnchorNet[ym][accId] = accountTxNetAt(accId, ym);
+}
+/* 확정된 달(lastRecordedYm) 이후 잔액 = 확정 당시 입력값
+   + (확정 당시 이후로 그 달 자체에 추가/수정/삭제된 거래만큼의 차이 — anchorNet과의 차이)
+   + (확정된 달보다 나중 달들의 거래 순증감 전부). 이렇게 하면 잔액을 한 번 확정해도 그 뒤에 입력하는 거래가
+   계속 반영된다. */
 function accountBalanceAt(accId, ym){
   const months = Object.keys(state.balances).filter(m => m <= ym && state.balances[m][accId] !== undefined).sort();
   if (months.length === 0) return computedAccountBalanceAt(accId, ym);
-  const last = months[months.length-1];
-  return state.balances[last][accId];
+  const lastRecordedYm = months[months.length-1];
+  const manualVal = state.balances[lastRecordedYm][accId];
+  const anchorNet = (state.balanceAnchorNet && state.balanceAnchorNet[lastRecordedYm] && state.balanceAnchorNet[lastRecordedYm][accId]) || 0;
+  const currentNetOfAnchorMonth = accountTxNetAt(accId, lastRecordedYm);
+  let total = manualVal + (currentNetOfAnchorMonth - anchorNet);
+  let allYms = new Set(Object.keys(state.balances));
+  state.transactions.forEach(t=>allYms.add(ymOf(t.date)));
+  allYms.add(ym); allYms.add(lastRecordedYm);
+  const laterMonths = [...allYms].filter(m => m > lastRecordedYm && m <= ym).sort();
+  laterMonths.forEach(m => { total += accountTxNetAt(accId, m); });
+  return total;
 }
 function liabBalanceAt(liabId, ym){
   const months = Object.keys(state.liabBalances).filter(m => m <= ym && state.liabBalances[m][liabId] !== undefined).sort();
@@ -1596,7 +1769,7 @@ function switchView(view){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
-  const titles = {dashboard:'대시보드', transactions:'거래내역', assets:'계좌현황', budget:'예산', report:'리포트', settings:'설정 · 데이터'};
+  const titles = {dashboard:'대시보드', transactions:'거래내역', schedule:'일정', assets:'계좌현황', budget:'예산', report:'리포트', settings:'설정 · 데이터'};
   document.getElementById('view-title').textContent = titles[view];
   renderAll();
 }
@@ -1606,6 +1779,7 @@ function renderAll(){
   renderDashboard();
   renderTransactionsView();
   renderCalendarView();
+  renderScheduleView();
   renderAssetsView();
   renderBudgetView();
   renderReportView();
@@ -2727,6 +2901,7 @@ function calSelectDate(dateStr){
   calSelectedDate = dateStr;
   calSelectedIncomeTxId = null;
   calSelectedExpenseTxId = null;
+  calSelectedEventId = null;
   renderCalendarView();
 }
 
@@ -2739,6 +2914,7 @@ function openCalDayActionModal(dateStr){
       <button type="button" class="btn small" id="cal-day-act-multi">⚡ 멀티지출</button>
       <button type="button" class="btn small" id="cal-day-act-income">➕ 수입</button>
       <button type="button" class="btn small" id="cal-day-act-transfer">🔀 이체</button>
+      <button type="button" class="btn small" id="cal-day-act-schedule">🗓️ 일정</button>
     </div>
   `);
   document.getElementById('modal-box').classList.add('modal-narrow');
@@ -2746,6 +2922,7 @@ function openCalDayActionModal(dateStr){
   document.getElementById('cal-day-act-multi').onclick = ()=>{ closeModal(); openMultiExpenseModal(dateStr); };
   document.getElementById('cal-day-act-income').onclick = ()=>{ closeModal(); openTxEntryModal('수입', dateStr, null); };
   document.getElementById('cal-day-act-transfer').onclick = ()=>{ closeModal(); openTxEntryModal('이체', dateStr, null); };
+  document.getElementById('cal-day-act-schedule').onclick = ()=>{ closeModal(); scheduleSelectedDate = dateStr; switchView('schedule'); };
 }
 
 function renderCalendarView(){
@@ -2768,15 +2945,23 @@ function renderCalendarView(){
     const dow = new Date(y, m-1, d).getDay();
     const holiday = KOREAN_HOLIDAYS[dateStr];
     const totals = dayTotals(dateStr);
+    const occs = occurrencesOnDate(dateStr);
     const classes = ['cal-cell'];
     if (dow===0) classes.push('sun');
     if (dow===6) classes.push('sat');
     if (holiday) classes.push('holiday');
     if (dateStr === todayStrVal) classes.push('today');
     if (dateStr === calSelectedDate) classes.push('selected');
+    const shownOccs = occs.slice(0,2);
+    const moreOccs = occs.length - shownOccs.length;
     cells += `<div class="${classes.join(' ')}" data-date="${dateStr}">
       <div class="cal-daynum">${d}</div>
       ${holiday ? `<div class="cal-holiday">${escapeHtml(holiday)}</div>` : ''}
+      ${occs.length ? `<div class="sched-pills">${shownOccs.map(o=>{
+        const timeLb = eventTimeLabel(o.ev);
+        const label = (timeLb?timeLb+' ':'') + o.ev.title;
+        return `<div class="sched-pill" style="background:${o.ev.color}">${escapeHtml(label)}</div>`;
+      }).join('')}${moreOccs>0?`<div class="sched-more">+${moreOccs}</div>`:''}</div>` : ''}
       <div class="cal-amounts">
         ${totals.income ? `<div class="cal-amt income">입금 ${fmtWonCompact(totals.income)}</div>` : ''}
         ${totals.expense ? `<div class="cal-amt expense">지출 ${fmtWonCompact(totals.expense)}</div>` : ''}
@@ -2813,8 +2998,24 @@ function renderCalSideLists(){
   const label = formatDateKorean(calSelectedDate);
   const l1 = document.getElementById('cal-side-date-label-1');
   const l2 = document.getElementById('cal-side-date-label-2');
+  const l3 = document.getElementById('cal-side-date-label-3');
   if (l1) l1.textContent = label;
   if (l2) l2.textContent = label;
+  if (l3) l3.textContent = label;
+
+  const dayOccs = occurrencesOnDate(calSelectedDate);
+  if (calSelectedEventId && !dayOccs.some(o=>o.ev.id===calSelectedEventId)) calSelectedEventId = null;
+  const eventBox = document.getElementById('cal-event-list');
+  if (eventBox){
+    eventBox.innerHTML = dayOccs.length ? dayOccs.map(o=>scheduleRowHtml(o, calSelectedEventId)).join('') : '<div class="cal-tx-empty">이 날짜에 등록된 일정이 없어요.</div>';
+    eventBox.querySelectorAll('[data-ev-id]').forEach(row=>{
+      row.addEventListener('click', ()=>{ calSelectedEventId = row.dataset.evId; renderCalSideLists(); });
+      row.addEventListener('dblclick', ()=>{
+        const ev = state.events.find(x=>x.id===row.dataset.evId);
+        if (ev) openEventModal(ev, calSelectedDate);
+      });
+    });
+  }
 
   const txs = txOnDate(calSelectedDate).sort((a,b)=>a.id.localeCompare(b.id));
   const incomeTxs = txs.filter(t=>t.type==='수입' || t.type==='이체');
@@ -2847,9 +3048,439 @@ function renderCalSideLists(){
   }
 }
 
+/* ============================== 일정(캘린더) 기능 ============================== */
+/* "YYYY-MM-DD" 문자열을 로컬 자정 기준 Date로 만든다 — new Date(문자열)은 UTC로 해석돼
+   시간대에 따라 하루가 밀릴 수 있어서, 항상 연/월/일을 직접 분해해서 만든다. */
+function dateFromYMD(s){
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function daysBetweenStr(a,b){
+  return Math.round((dateFromYMD(b) - dateFromYMD(a)) / 86400000);
+}
+function addDaysStr(dateStr, delta){
+  const d = dateFromYMD(dateStr);
+  d.setDate(d.getDate()+delta);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function mdLabel(dateStr){
+  const [,m,d] = dateStr.split('-');
+  return `${parseInt(m,10)}/${parseInt(d,10)}`;
+}
+/* 그 날짜가 속한 달의 몇 번째 주인지(1주차, 2주차 …) — 달력에서 그 날짜가 그려지는 줄 번호와 같다. */
+function weekOfMonth(dateStr){
+  const d = dateFromYMD(dateStr);
+  const firstDow = new Date(d.getFullYear(), d.getMonth(), 1).getDay();
+  return Math.ceil((d.getDate() + firstDow) / 7);
+}
+/* 반복 규칙에 따라 이 일정의 "시작일"이 특정 날짜에 해당하는지 판단한다.
+   반복 일정은 회차별로 따로 저장하지 않고, 시작일(ev.date) 기준으로 매번 계산한다
+   (그래서 반복 일정을 수정·삭제하면 전체 반복 일정에 한 번에 적용된다). */
+function isEventOnDate(ev, dateStr){
+  if (dateStr < ev.date) return false;
+  if (ev.repeatUntil && dateStr > ev.repeatUntil) return false;
+  switch (ev.repeat){
+    case 'daily': return true;
+    case 'weekly': return daysBetweenStr(ev.date, dateStr) % 7 === 0;
+    case 'monthly': return dateFromYMD(dateStr).getDate() === dateFromYMD(ev.date).getDate();
+    case 'yearly': {
+      const a = dateFromYMD(dateStr), b = dateFromYMD(ev.date);
+      return a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+    }
+    default: return dateStr === ev.date;
+  }
+}
+/* 시작일~종료일 기간이 있는 일정(며칠짜리)의 기간(일수, 당일이면 0). */
+function eventDurationDays(ev){
+  return Math.max(0, daysBetweenStr(ev.date, ev.endDate || ev.date));
+}
+/* dateStr을 덮고 있는 회차의 시작일을 찾는다(반복 + 기간을 함께 고려).
+   예: 매주 반복에 3일짜리 일정이면, dateStr 기준 0~기간일 만큼 거슬러 올라가며
+   그 날짜가 반복 시작일 패턴에 맞는지 검사해서 실제 회차 시작일을 역산한다. */
+function occurrenceStartCovering(ev, dateStr){
+  const dur = eventDurationDays(ev);
+  for (let i=0; i<=dur; i++){
+    const s = addDaysStr(dateStr, -i);
+    if (isEventOnDate(ev, s)) return s;
+  }
+  return null;
+}
+/* 시간 범위 표시용 라벨: "10:00-11:00" / "10:00" / '' (종일이거나 시간 미지정) */
+function eventTimeLabel(ev){
+  if (ev.allDay || !ev.startTime) return '';
+  return ev.endTime ? `${ev.startTime}-${ev.endTime}` : ev.startTime;
+}
+/* 특정 날짜를 덮고 있는 일정 회차 목록 { ev, occStart, occEnd }.
+   여러 날짜짜리(연속) 일정을 먼저, 그 다음 종일, 그 다음 시간순으로 정렬한다. */
+function occurrencesOnDate(dateStr){
+  const out = [];
+  state.events.forEach(ev=>{
+    const s = occurrenceStartCovering(ev, dateStr);
+    if (s){
+      const dur = eventDurationDays(ev);
+      out.push({ ev, occStart: s, occEnd: addDaysStr(s, dur) });
+    }
+  });
+  return out.sort((a,b)=>{
+    const aMulti = a.occStart!==a.occEnd, bMulti = b.occStart!==b.occEnd;
+    if (aMulti !== bMulti) return aMulti ? -1 : 1;
+    if (a.ev.allDay !== b.ev.allDay) return a.ev.allDay ? -1 : 1;
+    return (a.ev.startTime||'').localeCompare(b.ev.startTime||'');
+  });
+}
+function eventsOnDate(dateStr){
+  return occurrencesOnDate(dateStr).map(o=>o.ev);
+}
+function scheduleDefaultDate(){
+  return todayStr().slice(0,7)===currentYM ? todayStr() : `${currentYM}-01`;
+}
+/* startDate~endDate 범위에 걸치는 "여러 날짜짜리" 일정 회차들에게 겹치지 않는 줄(레인) 번호를 매긴다
+   (구간 스케줄링의 그리디 레인 배정과 동일). 같은 일정은 달력을 넘기거나 줄이 바뀌어도 항상 같은 레인에 그려져 시각적으로 끊기지 않는다. */
+function computeLaneAssignments(startDate, endDate){
+  const seen = new Map();
+  let d = startDate;
+  while (d <= endDate){
+    occurrencesOnDate(d).forEach(o=>{
+      if (o.occStart !== o.occEnd){
+        const key = o.ev.id+'|'+o.occStart;
+        if (!seen.has(key)) seen.set(key, o);
+      }
+    });
+    d = addDaysStr(d, 1);
+  }
+  const list = [...seen.values()].sort((a,b)=> a.occStart.localeCompare(b.occStart) || a.ev.id.localeCompare(b.ev.id));
+  const laneEnds = [];
+  const laneOf = new Map();
+  list.forEach(o=>{
+    let lane = laneEnds.findIndex(end => end < o.occStart);
+    if (lane === -1){ lane = laneEnds.length; laneEnds.push(o.occEnd); }
+    else { laneEnds[lane] = o.occEnd; }
+    laneOf.set(o.ev.id+'|'+o.occStart, lane);
+  });
+  return laneOf;
+}
+/* 달력 한 칸의 안쪽 내용(연속 일정 막대 + 하루짜리 일정 말풍선)을 만든다.
+   laneOf: computeLaneAssignments()의 결과, maxLanes: 이 칸에 보여줄 최대 막대 줄 수. */
+function buildScheduleCellInner(dateStr, dayNum, holiday, laneOf, maxLanes){
+  const occs = occurrencesOnDate(dateStr);
+  const multi = occs.filter(o=>o.occStart!==o.occEnd);
+  const single = occs.filter(o=>o.occStart===o.occEnd);
+  const laneRows = [];
+  multi.forEach(o=>{
+    const lane = laneOf.get(o.ev.id+'|'+o.occStart);
+    if (lane!=null) laneRows[lane] = o;
+  });
+  const shownLaneCount = Math.min(laneRows.length, maxLanes);
+  const dow = dateFromYMD(dateStr).getDay();
+  let barsHtml = '';
+  for (let i=0; i<shownLaneCount; i++){
+    const o = laneRows[i];
+    if (!o){ barsHtml += `<div class="sched-bar-spacer"></div>`; continue; }
+    const isStart = o.occStart===dateStr;
+    const isEnd = o.occEnd===dateStr;
+    const showLabel = isStart || dow===0;
+    const timeLb = eventTimeLabel(o.ev);
+    const label = showLabel ? escapeHtml((timeLb?timeLb+' ':'')+o.ev.title) : '';
+    const cls = 'sched-bar' + (isStart?' bar-start':'') + (isEnd?' bar-end':'');
+    barsHtml += `<div class="${cls}" style="background:${o.ev.color}" data-ev-id="${o.ev.id}">${label}</div>`;
+  }
+  const maxPillSlots = Math.max(0, maxLanes - shownLaneCount);
+  const shownSingle = single.slice(0, maxPillSlots);
+  let pillsHtml = shownSingle.map(o=>{
+    const timeLb = eventTimeLabel(o.ev);
+    const label = (timeLb?timeLb+' ':'') + o.ev.title;
+    return `<div class="sched-pill" style="background:${o.ev.color}" data-ev-id="${o.ev.id}">${escapeHtml(label)}</div>`;
+  }).join('');
+  const shownMultiCount = multi.filter(o=>{ const l=laneOf.get(o.ev.id+'|'+o.occStart); return l!=null && l<maxLanes; }).length;
+  const hiddenCount = occs.length - shownMultiCount - shownSingle.length;
+  if (hiddenCount>0) pillsHtml += `<div class="sched-more">+${hiddenCount}</div>`;
+  return `<div class="cal-daynum">${dayNum}</div>
+    ${holiday ? `<div class="cal-holiday">${escapeHtml(holiday)}</div>` : ''}
+    <div class="sched-bars">${barsHtml}</div>
+    <div class="sched-pills">${pillsHtml}</div>`;
+}
+function scheduleCellClasses(dateStr, todayStrVal){
+  const dow = dateFromYMD(dateStr).getDay();
+  const holiday = KOREAN_HOLIDAYS[dateStr];
+  const classes = ['cal-cell'];
+  if (dow===0) classes.push('sun');
+  if (dow===6) classes.push('sat');
+  if (holiday) classes.push('holiday');
+  if (dateStr === todayStrVal) classes.push('today');
+  if (dateStr === scheduleSelectedDate) classes.push('selected');
+  return { classes, holiday };
+}
+/* 월간 보기: 그 달 전체를 grid로 그린다(이전/다음 달의 빈 칸에는 일정을 표시하지 않는다). */
+function renderScheduleMonthGrid(grid){
+  const [y,m] = currentYM.split('-').map(Number);
+  const firstDow = new Date(y, m-1, 1).getDay();
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const daysInPrevMonth = new Date(y, m-1, 0).getDate();
+  const todayStrVal = todayStr();
+  const monthStart = `${currentYM}-01`;
+  const monthEnd = `${currentYM}-${String(daysInMonth).padStart(2,'0')}`;
+  const laneOf = computeLaneAssignments(monthStart, monthEnd);
+
+  let cells = '';
+  for (let i=0; i<firstDow; i++){
+    const dnum = daysInPrevMonth - firstDow + 1 + i;
+    cells += `<div class="cal-cell outside"><div class="cal-daynum">${dnum}</div></div>`;
+  }
+  for (let d=1; d<=daysInMonth; d++){
+    const dateStr = `${currentYM}-${String(d).padStart(2,'0')}`;
+    const { classes, holiday } = scheduleCellClasses(dateStr, todayStrVal);
+    cells += `<div class="${classes.join(' ')}" data-date="${dateStr}">${buildScheduleCellInner(dateStr, d, holiday, laneOf, 2)}</div>`;
+  }
+  const totalCells = firstDow + daysInMonth;
+  const trailing = (7 - (totalCells % 7)) % 7;
+  for (let i=1; i<=trailing; i++){
+    cells += `<div class="cal-cell outside"><div class="cal-daynum">${i}</div></div>`;
+  }
+  grid.innerHTML = cells;
+}
+/* 주간/일간 보기: 날짜 목록(7개 또는 1개)을 한 줄 grid로 그린다. */
+function renderScheduleRowGrid(grid, dates, maxLanes){
+  const todayStrVal = todayStr();
+  const laneOf = computeLaneAssignments(dates[0], dates[dates.length-1]);
+  grid.innerHTML = dates.map(dateStr=>{
+    const dayNum = parseInt(dateStr.slice(8,10), 10);
+    const { classes, holiday } = scheduleCellClasses(dateStr, todayStrVal);
+    return `<div class="${classes.join(' ')}" data-date="${dateStr}">${buildScheduleCellInner(dateStr, dayNum, holiday, laneOf, maxLanes)}</div>`;
+  }).join('');
+}
+/* 주간 보기(행리스트): 하루에 한 줄씩, 날짜 옆에 그날의 일정을 나열한다. 며칠짜리 일정은 "9/10~9/15"처럼
+   기간을 이름에 붙여서 보여준다(막대로 이어 그리는 대신, 각 줄에 텍스트로 표시). */
+function renderScheduleWeekList(container, dates){
+  const todayStrVal = todayStr();
+  const wdNames = ['일','월','화','수','목','금','토'];
+  container.innerHTML = dates.map(dateStr=>{
+    const dow = dateFromYMD(dateStr).getDay();
+    const holiday = KOREAN_HOLIDAYS[dateStr];
+    const occs = occurrencesOnDate(dateStr);
+    const classes = ['sched-week-row'];
+    if (dow===0) classes.push('sun');
+    if (dow===6) classes.push('sat');
+    if (dateStr===todayStrVal) classes.push('today');
+    if (dateStr===scheduleSelectedDate) classes.push('selected');
+    const dayNum = parseInt(dateStr.slice(8,10), 10);
+    const itemsHtml = occs.length ? occs.map(o=>{
+      const isMulti = o.occStart!==o.occEnd;
+      const timeLb = eventTimeLabel(o.ev);
+      let label = o.ev.title;
+      if (isMulti) label += ` (${mdLabel(o.occStart)}~${mdLabel(o.occEnd)})`;
+      else if (timeLb) label = `${timeLb} ${label}`;
+      return `<div class="sched-week-item" style="background:${o.ev.color}" data-ev-id="${o.ev.id}">${escapeHtml(label)}</div>`;
+    }).join('') : `<div class="sched-week-empty">일정 없음</div>`;
+    return `<div class="${classes.join(' ')}" data-date="${dateStr}">
+      <div class="sched-week-date">
+        <span class="sched-week-daynum">${dayNum}</span>
+        <span class="sched-week-dow">${wdNames[dow]}</span>
+        ${holiday ? `<span class="sched-week-holiday">${escapeHtml(holiday)}</span>` : ''}
+      </div>
+      <div class="sched-week-items">${itemsHtml}</div>
+    </div>`;
+  }).join('');
+}
+/* '일정' 탭 달력 렌더링 — scheduleViewMode(일간/주간/월간)에 따라 grid 모양과 상단 이동 UI가 바뀐다. */
+function renderScheduleView(){
+  const grid = document.getElementById('sched-grid');
+  if (!grid) return;
+  if (!scheduleSelectedDate || scheduleSelectedDate.slice(0,7) !== currentYM) scheduleSelectedDate = scheduleDefaultDate();
+
+  document.querySelectorAll('.sched-view-toggle button').forEach(b=> b.classList.toggle('active', b.dataset.schedMode===scheduleViewMode));
+  const navEl = document.getElementById('sched-nav');
+  const weekdaysEl = document.getElementById('sched-weekdays');
+  const rangeLabelEl = document.getElementById('sched-range-label');
+
+  if (scheduleViewMode==='month'){
+    navEl.style.display = 'none';
+    weekdaysEl.style.display = '';
+    grid.className = 'cal-grid';
+    renderScheduleMonthGrid(grid);
+  } else if (scheduleViewMode==='week'){
+    navEl.style.display = '';
+    weekdaysEl.style.display = 'none';
+    grid.className = 'sched-week-list';
+    const dow = dateFromYMD(scheduleSelectedDate).getDay();
+    const weekStart = addDaysStr(scheduleSelectedDate, -dow);
+    const dates = Array.from({length:7}, (_,i)=> addDaysStr(weekStart, i));
+    rangeLabelEl.textContent = `${weekStart.slice(0,4)}년 ${parseInt(weekStart.slice(5,7),10)}월 ${weekOfMonth(weekStart)}주차 (${mdLabel(weekStart)}~${mdLabel(dates[6])})`;
+    renderScheduleWeekList(grid, dates);
+  } else {
+    navEl.style.display = '';
+    weekdaysEl.style.display = 'none';
+    grid.className = 'cal-grid sched-grid-day';
+    rangeLabelEl.textContent = `${formatDateKorean(scheduleSelectedDate)} · ${weekOfMonth(scheduleSelectedDate)}주차`;
+    renderScheduleRowGrid(grid, [scheduleSelectedDate], 6);
+  }
+  renderScheduleSideList();
+}
+/* 일정 목록 한 줄 템플릿 — 거래 달력의 일정 카드와 '일정' 탭에서 함께 쓴다. occ는 occurrencesOnDate()가 주는 { ev, occStart, occEnd }. */
+function scheduleRowHtml(occ, selectedId){
+  const { ev, occStart, occEnd } = occ;
+  const isMulti = occStart !== occEnd;
+  let dateLabel = isMulti ? `${mdLabel(occStart)} ~ ${mdLabel(occEnd)}` : (ev.allDay ? '종일' : eventTimeLabel(ev));
+  if (isMulti && !ev.allDay){
+    const t = eventTimeLabel(ev);
+    if (t) dateLabel += ` · ${t}`;
+  }
+  const repeatLabel = ev.repeat!=='none' ? ` · ${REPEAT_LABELS[ev.repeat]}` : '';
+  return `<div class="cal-tx-row ${ev.id===selectedId?'selected':''}" data-ev-id="${ev.id}">
+    <span class="legend-dot" style="background:${ev.color}"></span>
+    <div class="dtr-main">
+      <div>${escapeHtml(ev.title)}</div>
+      <div class="muted-small">${dateLabel}${repeatLabel}${ev.memo?' · '+escapeHtml(ev.memo):''}</div>
+    </div>
+  </div>`;
+}
+/* 선택된 날짜(scheduleSelectedDate)의 일정 목록을 '일정' 탭 오른쪽에 렌더 */
+function renderScheduleSideList(){
+  if (!scheduleSelectedDate) return;
+  const labelEl = document.getElementById('sched-side-date-label');
+  if (labelEl) labelEl.textContent = formatDateKorean(scheduleSelectedDate);
+
+  const occs = occurrencesOnDate(scheduleSelectedDate);
+  if (scheduleSelectedEventId && !occs.some(o=>o.ev.id===scheduleSelectedEventId)) scheduleSelectedEventId = null;
+  const box = document.getElementById('sched-event-list');
+  if (!box) return;
+  box.innerHTML = occs.length ? occs.map(o=>scheduleRowHtml(o, scheduleSelectedEventId)).join('') : '<div class="cal-tx-empty">이 날짜에 등록된 일정이 없어요.</div>';
+  box.querySelectorAll('[data-ev-id]').forEach(row=>{
+    row.addEventListener('click', ()=>{ scheduleSelectedEventId = row.dataset.evId; renderScheduleSideList(); });
+    row.addEventListener('dblclick', ()=>{
+      const ev = state.events.find(x=>x.id===row.dataset.evId);
+      if (ev) openEventModal(ev, scheduleSelectedDate);
+    });
+  });
+}
+/* 일정 색상 선택 줄: 기본 팔레트 + 사용자가 직접 추가한 색상들 + 새 색상을 고르는 커스텀 스와치. */
+function buildColorSwatchRowHtml(selectedColor){
+  const known = [...PALETTE, ...(state.customEventColors||[])];
+  const swatches = known.map(c=>`<span class="color-swatch ${c===selectedColor?'selected':''}" data-color="${c}" style="background:${c}"></span>`).join('');
+  const pickerVal = (selectedColor && !known.includes(selectedColor)) ? selectedColor : '#4C86E0';
+  return swatches + `<label class="color-swatch color-swatch-custom" id="m-color-custom-label" title="새 색상 추가">
+    <input type="color" id="m-color-custom" value="${pickerVal}"><span class="color-swatch-plus">+</span>
+  </label>`;
+}
+/* 일정 추가/수정 팝업. existing이 있으면 수정, 없으면 새로 추가한다.
+   반복 일정은 회차를 따로 두지 않으므로, 수정·삭제는 항상 반복 일정 전체에 적용된다. */
+function openEventModal(existing, defaultDate){
+  const isEdit = !!existing;
+  const dateVal = existing ? existing.date : (defaultDate || scheduleSelectedDate || todayStr());
+  const endDateVal = existing ? (existing.endDate || existing.date) : dateVal;
+  const allDay = existing ? existing.allDay : true;
+  const initialColor = existing ? existing.color : PALETTE[0];
+  const initialRepeat = existing ? existing.repeat : 'none';
+  openModal(`
+    <h3>${isEdit?'일정 수정':'일정 추가'}</h3>
+    <div class="field"><label>제목</label><input id="m-title" value="${existing?escapeHtml(existing.title):''}" placeholder="예: 병원 예약"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+      <div class="field"><label>시작일</label><input type="date" id="m-date" value="${dateVal}"></div>
+      <div class="field"><label>종료일</label><input type="date" id="m-end-date" value="${endDateVal}"></div>
+    </div>
+    <div class="field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0">
+      <input type="checkbox" id="m-allday" style="width:auto" ${allDay?'checked':''}><span>종일</span>
+    </label></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px" id="m-time-row">
+      <div class="field"><label>시작 시간</label><input type="time" id="m-time" value="${existing&&existing.startTime?existing.startTime:''}" ${allDay?'disabled':''}></div>
+      <div class="field"><label>종료 시간</label><input type="time" id="m-time-end" value="${existing&&existing.endTime?existing.endTime:''}" ${allDay?'disabled':''}></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
+      <div class="field"><label>반복</label><select id="m-repeat">
+        ${Object.entries(REPEAT_LABELS).map(([k,lb])=>`<option value="${k}" ${initialRepeat===k?'selected':''}>${lb}</option>`).join('')}
+      </select></div>
+      <div class="field" id="m-repeat-until-field" style="display:${initialRepeat!=='none'?'block':'none'}">
+        <label>반복 종료일 (비워두면 계속)</label>
+        <input type="date" id="m-repeat-until" value="${existing&&existing.repeatUntil?existing.repeatUntil:''}">
+      </div>
+    </div>
+    <div class="field"><label>색상</label><div class="color-swatch-row" id="m-color-row">${buildColorSwatchRowHtml(initialColor)}</div></div>
+    <div class="field"><label>메모</label><input id="m-memo" value="${existing&&existing.memo?escapeHtml(existing.memo):''}" placeholder="선택 입력"></div>
+    <div class="modal-actions">${isEdit?'<button class="btn ghost" id="m-delete" style="margin-right:auto">삭제</button>':''}<button class="btn ghost" id="m-cancel">취소</button><button class="btn primary" id="m-save">저장</button></div>
+  `);
+  let selectedColor = initialColor;
+  document.getElementById('m-color-row').addEventListener('click', (e)=>{
+    const sw = e.target.closest('.color-swatch');
+    if (!sw || !sw.dataset.color) return;
+    selectedColor = sw.dataset.color;
+    document.querySelectorAll('#m-color-row .color-swatch').forEach(s=>s.classList.toggle('selected', s===sw));
+  });
+  /* 커스텀 색상 피커에서 색을 고르면(change = 선택을 마쳤을 때) 팔레트에 새 색상으로 영구히 추가하고,
+     그 자리에서 바로 선택 상태로 만든다 — 다음에 일정을 추가할 때도 계속 골라 쓸 수 있도록. */
+  document.getElementById('m-color-row').addEventListener('change', (e)=>{
+    if (e.target.id !== 'm-color-custom') return;
+    const c = e.target.value;
+    if (!state.customEventColors) state.customEventColors = [];
+    if (!PALETTE.includes(c) && !state.customEventColors.includes(c)){
+      state.customEventColors.push(c);
+      markDirty();
+    }
+    selectedColor = c;
+    document.getElementById('m-color-row').innerHTML = buildColorSwatchRowHtml(selectedColor);
+  });
+  document.getElementById('m-allday').addEventListener('change', (e)=>{
+    const disabled = e.target.checked;
+    document.getElementById('m-time').disabled = disabled;
+    document.getElementById('m-time-end').disabled = disabled;
+    if (disabled){ document.getElementById('m-time').value=''; document.getElementById('m-time-end').value=''; }
+  });
+  document.getElementById('m-repeat').addEventListener('change', (e)=>{
+    document.getElementById('m-repeat-until-field').style.display = e.target.value==='none' ? 'none' : 'block';
+  });
+  document.getElementById('m-cancel').onclick = closeModal;
+  if (isEdit){
+    document.getElementById('m-delete').onclick = ()=>{
+      const msg = existing.repeat!=='none' ? '반복되는 일정 전체가 삭제돼요. 삭제할까요?' : '이 일정을 삭제할까요?';
+      if (!confirm(msg)) return;
+      state.events = state.events.filter(e=>e.id!==existing.id);
+      if (calSelectedEventId===existing.id) calSelectedEventId = null;
+      if (scheduleSelectedEventId===existing.id) scheduleSelectedEventId = null;
+      markDirty(); closeModal(); renderAll();
+    };
+  }
+  document.getElementById('m-save').onclick = ()=>{
+    const title = document.getElementById('m-title').value.trim();
+    if (!title){ alert('제목을 입력해주세요.'); return; }
+    const date = document.getElementById('m-date').value;
+    if (!date){ alert('시작일을 선택해주세요.'); return; }
+    const endDate = document.getElementById('m-end-date').value || date;
+    if (endDate < date){ alert('종료일은 시작일보다 빠를 수 없어요.'); return; }
+    const allDayVal = document.getElementById('m-allday').checked;
+    const startTime = allDayVal ? '' : document.getElementById('m-time').value;
+    const endTime = allDayVal ? '' : document.getElementById('m-time-end').value;
+    if (!allDayVal && startTime && endTime && endTime < startTime){ alert('종료 시간이 시작 시간보다 빠를 수 없어요.'); return; }
+    const repeat = document.getElementById('m-repeat').value;
+    const repeatUntil = repeat!=='none' ? (document.getElementById('m-repeat-until').value || '') : '';
+    const memo = document.getElementById('m-memo').value.trim();
+    const payload = { title, date, endDate, allDay:allDayVal, startTime, endTime, repeat, repeatUntil, color:selectedColor, memo };
+    if (isEdit){ Object.assign(existing, payload); }
+    else { state.events.push({ id:uid('evt'), ...payload }); }
+    markDirty(); closeModal();
+    calSelectedDate = date;
+    scheduleSelectedDate = date;
+    renderAll();
+  };
+}
+
 /* ============================== 수입/이체/지출 입력 팝업 (달력에서 열기) ============================== */
 /* type: '수입' | '이체' | '지출'. editingId가 있으면 기존 거래 수정, 없으면 새 거래 추가.
    왼쪽에 즐겨찾기(같은 type만) 목록을 보여주고, 클릭하면 오른쪽 입력폼에 그대로 채워진다. */
+/* 지출/수입/이체 입력 팝업에서 대분류→소분류→계좌→담당 순으로 자동 포커스 이동할 때 쓰는 순서.
+   이체는 소분류 칸이 화면에서 숨겨져 있으므로 그 경우엔 건너뛴다. 금액은 항상 순서에서 제외한다. */
+function txEntryFieldOrder(){
+  const order = ['pop-category'];
+  const subcatField = document.getElementById('pop-subcat-field');
+  if (subcatField && subcatField.style.display !== 'none') order.push('pop-subcat');
+  order.push('pop-account', 'pop-owner');
+  return order;
+}
+function focusNextTxField(currentId){
+  const order = txEntryFieldOrder();
+  const idx = order.indexOf(currentId);
+  if (idx>=0 && idx<order.length-1){
+    const nextEl = document.getElementById(order[idx+1]);
+    if (nextEl) nextEl.focus();
+  }
+}
 function openTxEntryModal(type, dateStr, editingId){
   txModalType = type;
   txModalEditingId = editingId || null;
@@ -2935,6 +3566,12 @@ function openTxEntryModal(type, dateStr, editingId){
 
   document.getElementById('pop-category').addEventListener('change', (e)=>{
     if (type!=='이체') populateSubCategorySelect(document.getElementById('pop-subcat'), e.target.value);
+  });
+  /* 대분류 → 소분류 → 계좌 → 담당 순으로, 하나를 선택하면 바로 다음 항목으로 포커스가 넘어간다.
+     금액은 직접 타이핑해야 하는 칸이라 순서에서 건너뛴다(자동으로 포커스가 가면 입력 흐름이 끊긴다). */
+  ['pop-category','pop-subcat','pop-account','pop-owner'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', ()=> focusNextTxField(id));
   });
 
   if (editing){
@@ -3413,9 +4050,7 @@ function openBalanceTrackModal(accId){
       inp.addEventListener('change', (e)=>{
         const m = e.target.dataset.baltrackMonth;
         const val = parseMoneyInput(e.target.value);
-        if (!state.balances[m]) state.balances[m] = {};
-        if (isNaN(val)) delete state.balances[m][accId];
-        else state.balances[m][accId] = val;
+        setManualBalance(accId, m, val);
         markDirty();
         setTimeout(renderTrack, 0);
       });
@@ -4590,7 +5225,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   document.getElementById('prev-month').onclick = ()=>{ currentYM = addMonths(currentYM,-1); renderAll(); };
   document.getElementById('next-month').onclick = ()=>{ currentYM = addMonths(currentYM,1); renderAll(); };
-  document.getElementById('today-btn').onclick = ()=>{ currentYM = todayStr().slice(0,7); calSelectedDate = todayStr(); renderAll(); };
+  document.getElementById('today-btn').onclick = ()=>{ currentYM = todayStr().slice(0,7); calSelectedDate = todayStr(); scheduleSelectedDate = todayStr(); renderAll(); };
   document.getElementById('ym-year-select').addEventListener('change', (e)=>{
     const m = currentYM.split('-')[1];
     currentYM = `${e.target.value}-${m}`;
@@ -4698,6 +5333,65 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if (!confirm('이 거래를 삭제할까요?')) return;
     state.transactions = state.transactions.filter(t=>t.id!==calSelectedExpenseTxId);
     calSelectedExpenseTxId = null;
+    markDirty();
+    renderAll();
+  });
+  document.getElementById('cal-add-event-btn').addEventListener('click', ()=> openEventModal(null, calSelectedDate));
+  document.getElementById('cal-edit-event-btn').addEventListener('click', ()=>{
+    if (!calSelectedEventId){ alert('수정할 일정을 목록에서 먼저 선택하세요.'); return; }
+    const ev = state.events.find(x=>x.id===calSelectedEventId);
+    if (ev) openEventModal(ev, calSelectedDate);
+  });
+  document.getElementById('cal-del-event-btn').addEventListener('click', ()=>{
+    if (!calSelectedEventId){ alert('삭제할 일정을 목록에서 먼저 선택하세요.'); return; }
+    const ev = state.events.find(x=>x.id===calSelectedEventId);
+    const msg = ev && ev.repeat!=='none' ? '반복되는 일정 전체가 삭제돼요. 삭제할까요?' : '이 일정을 삭제할까요?';
+    if (!confirm(msg)) return;
+    state.events = state.events.filter(x=>x.id!==calSelectedEventId);
+    calSelectedEventId = null;
+    markDirty();
+    renderAll();
+  });
+
+  document.getElementById('sched-grid').addEventListener('click', (e)=>{
+    const cell = e.target.closest('.cal-cell, .sched-week-row');
+    if (!cell || cell.classList.contains('outside')) return;
+    scheduleSelectedDate = cell.dataset.date;
+    const evTarget = e.target.closest('[data-ev-id]');
+    scheduleSelectedEventId = evTarget ? evTarget.dataset.evId : null;
+    renderScheduleSideList();
+  });
+  document.querySelectorAll('.sched-view-toggle button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      scheduleViewMode = btn.dataset.schedMode;
+      renderAll();
+    });
+  });
+  document.getElementById('sched-prev-btn').addEventListener('click', ()=>{
+    scheduleSelectedDate = addDaysStr(scheduleSelectedDate, scheduleViewMode==='week' ? -7 : -1);
+    currentYM = scheduleSelectedDate.slice(0,7);
+    scheduleSelectedEventId = null;
+    renderAll();
+  });
+  document.getElementById('sched-next-btn').addEventListener('click', ()=>{
+    scheduleSelectedDate = addDaysStr(scheduleSelectedDate, scheduleViewMode==='week' ? 7 : 1);
+    currentYM = scheduleSelectedDate.slice(0,7);
+    scheduleSelectedEventId = null;
+    renderAll();
+  });
+  document.getElementById('sched-add-btn').addEventListener('click', ()=> openEventModal(null, scheduleSelectedDate));
+  document.getElementById('sched-edit-btn').addEventListener('click', ()=>{
+    if (!scheduleSelectedEventId){ alert('수정할 일정을 목록에서 먼저 선택하세요.'); return; }
+    const ev = state.events.find(x=>x.id===scheduleSelectedEventId);
+    if (ev) openEventModal(ev, scheduleSelectedDate);
+  });
+  document.getElementById('sched-del-btn').addEventListener('click', ()=>{
+    if (!scheduleSelectedEventId){ alert('삭제할 일정을 목록에서 먼저 선택하세요.'); return; }
+    const ev = state.events.find(x=>x.id===scheduleSelectedEventId);
+    const msg = ev && ev.repeat!=='none' ? '반복되는 일정 전체가 삭제돼요. 삭제할까요?' : '이 일정을 삭제할까요?';
+    if (!confirm(msg)) return;
+    state.events = state.events.filter(x=>x.id!==scheduleSelectedEventId);
+    scheduleSelectedEventId = null;
     markDirty();
     renderAll();
   });
@@ -4878,9 +5572,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const profitId = e.target.dataset.profitAccount;
     if (accId){
       const val = parseMoneyInput(e.target.value);
-      if (!state.balances[currentYM]) state.balances[currentYM] = {};
-      if (isNaN(val)) delete state.balances[currentYM][accId];
-      else state.balances[currentYM][accId] = val;
+      setManualBalance(accId, currentYM, val);
       markDirty();
       // deferred so a browser-native blur cascade from this same input finishes
       // before we replace the table's innerHTML (avoids a "node no longer a child" DOM race)
