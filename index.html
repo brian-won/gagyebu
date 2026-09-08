@@ -4590,6 +4590,12 @@ function populateBulkCategorySelect(sel, type){
   const cats = type === '수입' ? state.categories.income : state.categories.expense;
   sel.innerHTML = '<option value="">(변경 안함)</option>' + cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
 }
+/* 소분류 select — 대분류를 고르지 않았으면 고를 소분류 목록을 알 수 없으므로 비활성화해둔다 */
+function populateBulkSubCategorySelect(sel, major){
+  const subs = major ? subCatsOf(major) : [];
+  sel.innerHTML = '<option value="">(변경 안함)</option>' + subs.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+  sel.disabled = !major;
+}
 
 function txBulkEditModal(ids){
   const idSet = new Set(ids);
@@ -4619,6 +4625,10 @@ function txBulkEditModal(ids){
       <select id="bulk-cat-type" style="width:90px"><option value="지출">지출</option><option value="수입">수입</option></select>
       <select id="bulk-category" style="flex:1"></select>
     </div>
+    <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:10px">
+      <label style="min-width:80px;margin:0">소분류${infoTip('대분류를 먼저 골라야 그 아래 소분류를 선택할 수 있어요. 대분류를 "(변경 안함)"으로 두면 소분류도 바꿀 수 없어요.')}</label>
+      <select id="bulk-subcat" style="flex:1" disabled><option value="">(변경 안함)</option></select>
+    </div>
 
     <div class="modal-actions"><button class="btn ghost" id="bulk-cancel">취소</button><button class="btn primary" id="bulk-save">적용</button></div>
   `);
@@ -4626,6 +4636,10 @@ function txBulkEditModal(ids){
   populateBulkCategorySelect(document.getElementById('bulk-category'), '지출');
   document.getElementById('bulk-cat-type').addEventListener('change', (e)=>{
     populateBulkCategorySelect(document.getElementById('bulk-category'), e.target.value);
+    populateBulkSubCategorySelect(document.getElementById('bulk-subcat'), '');
+  });
+  document.getElementById('bulk-category').addEventListener('change', (e)=>{
+    populateBulkSubCategorySelect(document.getElementById('bulk-subcat'), e.target.value);
   });
 
   document.getElementById('bulk-cancel').onclick = closeModal;
@@ -4635,6 +4649,7 @@ function txBulkEditModal(ids){
     const tagVal = document.getElementById('bulk-tag').value;
     const catType = document.getElementById('bulk-cat-type').value;
     const catVal = document.getElementById('bulk-category').value;
+    const subVal = document.getElementById('bulk-subcat').value;
 
     if (!ownerVal && !accountVal && !tagVal && !catVal){ alert('바꿀 값을 하나 이상 선택해주세요.'); return; }
 
@@ -4644,7 +4659,7 @@ function txBulkEditModal(ids){
       if (accountVal) t.accountId = accountVal;
       if (tagVal) t.fixedVar = tagVal;
       if (catVal){
-        if (t.type === catType) t.category = catVal;
+        if (t.type === catType){ t.category = catVal; if (subVal) t.subCategory = subVal; }
         else catSkipped++;
       }
     });
