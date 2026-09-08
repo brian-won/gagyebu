@@ -735,7 +735,7 @@
               <h3>거래내역 <span class="muted-small" id="tx-count"></span></h3>
               <button type="button" class="btn small" id="mobile-filter-btn">검색 조건</button>
             </div>
-            <table><thead><tr><th style="width:28px"><input type="checkbox" id="tx-select-all"></th><th>날짜</th><th>구분</th><th>대분류</th><th>소분류</th><th>내용</th><th>계좌</th><th>담당</th><th>태그</th><th class="num">금액</th></tr></thead><tbody id="tx-table-body"></tbody></table>
+            <table><thead><tr><th style="width:28px"><input type="checkbox" id="tx-select-all"></th><th>날짜</th><th>구분</th><th>대분류</th><th>소분류</th><th>내용</th><th>계좌</th><th>담당</th><th>속성</th><th class="num">금액</th></tr></thead><tbody id="tx-table-body"></tbody></table>
             <div class="empty-state" id="tx-empty" style="display:none">이 달에는 거래 내역이 없어요.</div>
           </div>
         </div>
@@ -4596,6 +4596,10 @@ function populateBulkSubCategorySelect(sel, major){
   sel.innerHTML = '<option value="">(변경 안함)</option>' + subs.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
   sel.disabled = !major;
 }
+/* 속성 select — 지출/수입/이체마다 선택지가 달라서(fixedVarOptionsForType), 유형을 먼저 고른 뒤 그에 맞는 목록을 채운다 */
+function populateBulkFixedVarSelect(sel, type){
+  sel.innerHTML = '<option value="">(변경 안함)</option>' + fixedVarOptionsForType(type).map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+}
 
 function txBulkEditModal(ids){
   const idSet = new Set(ids);
@@ -4617,8 +4621,9 @@ function txBulkEditModal(ids){
       <select id="bulk-account" style="flex:1"><option value="">(변경 안함)</option>${state.accounts.map(a=>`<option value="${a.id}">${escapeHtml(a.name)}</option>`).join('')}</select>
     </div>
     <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:10px">
-      <label style="min-width:80px;margin:0">태그</label>
-      <select id="bulk-tag" style="flex:1"><option value="">(변경 안함)</option><option value="변동">변동</option><option value="고정">고정</option></select>
+      <label style="min-width:80px;margin:0">속성${infoTip('속성은 선택한 유형(지출/수입/이체)과 같은 거래에만 적용돼요. 다른 유형의 거래는 속성이 바뀌지 않아요.')}</label>
+      <select id="bulk-fixedvar-type" style="width:90px"><option value="지출">지출</option><option value="수입">수입</option><option value="이체">이체</option></select>
+      <select id="bulk-fixedvar" style="flex:1"></select>
     </div>
     <div class="field" style="display:flex;align-items:center;gap:8px;margin-top:10px">
       <label style="min-width:80px;margin:0">대분류${infoTip('대분류는 선택한 유형(수입/지출)과 같은 거래에만 적용돼요. 이체 거래나 다른 유형의 거래는 대분류가 바뀌지 않아요.')}</label>
@@ -4633,6 +4638,10 @@ function txBulkEditModal(ids){
     <div class="modal-actions"><button class="btn ghost" id="bulk-cancel">취소</button><button class="btn primary" id="bulk-save">적용</button></div>
   `);
 
+  populateBulkFixedVarSelect(document.getElementById('bulk-fixedvar'), '지출');
+  document.getElementById('bulk-fixedvar-type').addEventListener('change', (e)=>{
+    populateBulkFixedVarSelect(document.getElementById('bulk-fixedvar'), e.target.value);
+  });
   populateBulkCategorySelect(document.getElementById('bulk-category'), '지출');
   document.getElementById('bulk-cat-type').addEventListener('change', (e)=>{
     populateBulkCategorySelect(document.getElementById('bulk-category'), e.target.value);
@@ -4646,18 +4655,22 @@ function txBulkEditModal(ids){
   document.getElementById('bulk-save').onclick = ()=>{
     const ownerVal = document.getElementById('bulk-owner').value;
     const accountVal = document.getElementById('bulk-account').value;
-    const tagVal = document.getElementById('bulk-tag').value;
+    const fvType = document.getElementById('bulk-fixedvar-type').value;
+    const fvVal = document.getElementById('bulk-fixedvar').value;
     const catType = document.getElementById('bulk-cat-type').value;
     const catVal = document.getElementById('bulk-category').value;
     const subVal = document.getElementById('bulk-subcat').value;
 
-    if (!ownerVal && !accountVal && !tagVal && !catVal){ alert('바꿀 값을 하나 이상 선택해주세요.'); return; }
+    if (!ownerVal && !accountVal && !fvVal && !catVal){ alert('바꿀 값을 하나 이상 선택해주세요.'); return; }
 
-    let catSkipped = 0;
+    let catSkipped = 0, fvSkipped = 0;
     targets.forEach(t=>{
       if (ownerVal) t.owner = ownerVal;
       if (accountVal) t.accountId = accountVal;
-      if (tagVal) t.fixedVar = tagVal;
+      if (fvVal){
+        if (t.type === fvType){ t.fixedVar = fvVal; t.excludeStat = POP_FIXEDVAR_EXCLUDE_VALUES.includes(fvVal); }
+        else fvSkipped++;
+      }
       if (catVal){
         if (t.type === catType){ t.category = catVal; if (subVal) t.subCategory = subVal; }
         else catSkipped++;
@@ -4666,7 +4679,11 @@ function txBulkEditModal(ids){
 
     selectedTxIds.clear();
     markDirty(); closeModal(); renderAll();
-    alert(`${targets.length}건을 수정했어요.` + (catVal && catSkipped ? ` (대분류는 유형이 달라 ${catSkipped}건 제외)` : ''));
+    const skipNotes = [
+      fvVal && fvSkipped ? `속성은 유형이 달라 ${fvSkipped}건 제외` : '',
+      catVal && catSkipped ? `대분류는 유형이 달라 ${catSkipped}건 제외` : ''
+    ].filter(Boolean).join(', ');
+    alert(`${targets.length}건을 수정했어요.` + (skipNotes ? ` (${skipNotes})` : ''));
   };
 }
 
