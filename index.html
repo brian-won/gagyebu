@@ -364,6 +364,8 @@
   .tx-list-row:hover { background:var(--page); }
   @media (max-width:1100px){ .cal-split-grid { grid-template-columns:1fr; } }
 
+  /* 일정 기능(일정 탭, 거래 달력의 일정 카드, 일정 추가/수정 팝업)에서만 쓰는 글꼴 — 나머지 화면은 기본 글꼴을 그대로 쓴다 */
+  .sched-font { font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo',sans-serif; }
   /* 달력 날짜 칸에 표시되는 하루짜리 일정 말풍선(줄바꿈으로 하나씩 쌓임) — 거래 달력과 '일정' 탭이 함께 쓴다 */
   .sched-pills { display:flex; flex-direction:column; gap:2px; margin-top:1px; overflow:hidden; }
   .sched-pill { font-size:9.5px; font-weight:600; color:#fff; padding:1px 5px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -692,7 +694,7 @@
               </div>
               <div id="cal-expense-list"></div>
             </div>
-            <div class="card">
+            <div class="card sched-font">
               <div class="section-title">
                 <h3>일정 <span class="muted-small" id="cal-side-date-label-3"></span></h3>
               </div>
@@ -764,7 +766,7 @@
     </section>
 
     <!-- ================= SCHEDULE ================= -->
-    <section class="view" id="view-schedule">
+    <section class="view sched-font" id="view-schedule">
       <div class="cal-split-grid">
         <div class="card">
           <div class="section-title">
@@ -1004,6 +1006,13 @@
             <button class="btn small" id="export-cat-btn">⬇ 카테고리 내보내기</button>
             <button class="btn small" id="import-cat-btn">⬆ 카테고리 가져오기</button>
             <input type="file" id="import-cat-input" accept="application/json" style="display:none">
+          </div>
+          <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+          <div class="section-title" style="margin-bottom:6px"><h3 style="font-size:13px">일정 내보내기 · 가져오기<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">등록해둔 일정(반복·색상 포함)을 파일로 내보내거나, 다른 기기나 가족이 내보낸 파일을 가져와서 똑같이 맞출 수 있어요. 가져오면 지금 가지고 있는 일정을 그 파일 내용으로 덮어써요.</span></span></h3></div>
+          <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap">
+            <button class="btn small" id="export-events-btn">⬇ 일정 내보내기</button>
+            <button class="btn small" id="import-events-btn">⬆ 일정 가져오기</button>
+            <input type="file" id="import-events-input" accept="application/json" style="display:none">
           </div>
         </div>
         <div class="card" style="border-color:var(--critical)">
@@ -3378,6 +3387,7 @@ function openEventModal(existing, defaultDate){
   const initialColor = existing ? existing.color : PALETTE[0];
   const initialRepeat = existing ? existing.repeat : 'none';
   openModal(`
+    <div class="sched-font">
     <h3>${isEdit?'일정 수정':'일정 추가'}</h3>
     <div class="field"><label>제목</label><input id="m-title" value="${existing?escapeHtml(existing.title):''}" placeholder="예: 병원 예약"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
@@ -3403,6 +3413,7 @@ function openEventModal(existing, defaultDate){
     <div class="field"><label>색상</label><div class="color-swatch-row" id="m-color-row">${buildColorSwatchRowHtml(initialColor)}</div></div>
     <div class="field"><label>메모</label><input id="m-memo" value="${existing&&existing.memo?escapeHtml(existing.memo):''}" placeholder="선택 입력"></div>
     <div class="modal-actions">${isEdit?'<button class="btn ghost" id="m-delete" style="margin-right:auto">삭제</button>':''}<button class="btn ghost" id="m-cancel">취소</button><button class="btn primary" id="m-save">저장</button></div>
+    </div>
   `);
   let selectedColor = initialColor;
   document.getElementById('m-color-row').addEventListener('click', (e)=>{
@@ -5175,6 +5186,38 @@ function importCategoriesFile(file){
   reader.readAsText(file);
 }
 
+function exportEvents(){
+  const data = { type:'gagyebu-events', events: state.events, customEventColors: state.customEventColors||[] };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url; a.download = `일정_${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importEventsFile(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    let data;
+    try { data = JSON.parse(e.target.result); }
+    catch(err){ alert('일정 파일을 읽지 못했어요.'); return; }
+    if (!data || !Array.isArray(data.events)){
+      alert('올바른 일정 파일이 아니에요.');
+      return;
+    }
+    if (!confirm(`지금 가지고 있는 일정을 이 파일의 일정 ${data.events.length}건으로 덮어쓸까요?`)) return;
+    state.events = data.events;
+    if (Array.isArray(data.customEventColors)) state.customEventColors = data.customEventColors;
+    scheduleSelectedEventId = null; calSelectedEventId = null;
+    markDirty();
+    renderAll();
+    alert('일정을 불러왔어요.');
+  };
+  reader.readAsText(file);
+}
+
 function importJsonFile(file){
   const reader = new FileReader();
   reader.onload = (e)=>{
@@ -5798,6 +5841,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('import-cat-input').addEventListener('change', (e)=>{
     const f = e.target.files[0];
     if (f) importCategoriesFile(f);
+    e.target.value = '';
+  });
+  document.getElementById('export-events-btn').onclick = exportEvents;
+  document.getElementById('import-events-btn').onclick = ()=> document.getElementById('import-events-input').click();
+  document.getElementById('import-events-input').addEventListener('change', (e)=>{
+    const f = e.target.files[0];
+    if (f) importEventsFile(f);
     e.target.value = '';
   });
 
