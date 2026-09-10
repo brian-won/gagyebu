@@ -328,8 +328,10 @@
   .cal-wd { text-align:center; font-size:12px; font-weight:700; color:var(--muted); padding:4px 0; }
   .cal-wd.sun { color:var(--critical); }
   .cal-wd.sat { color:var(--series-1); }
-  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--grid); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
-  .cal-cell { background:var(--card); min-height:96px; padding:6px 7px; cursor:pointer; transition:background .12s; display:flex; flex-direction:column; gap:2px; }
+  /* minmax(0,1fr): 칸 안 내용(막대 텍스트 등)이 길어도 칸 너비가 늘어나지 않고 항상 7등분 균일 폭을 유지한다.
+     칸 높이는 grid-auto-rows 없이 auto로 두어, 내용이 많은 줄만 아래로 자연스럽게 늘어난다. */
+  .cal-grid { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:1px; background:var(--grid); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .cal-cell { background:var(--card); min-height:96px; min-width:0; padding:6px 7px; cursor:pointer; transition:background .12s; display:flex; flex-direction:column; gap:2px; }
   .cal-cell:hover { background:var(--page); }
   .cal-cell.outside { background:var(--page); cursor:default; opacity:.45; }
   .cal-cell.outside:hover { background:var(--page); }
@@ -367,12 +369,12 @@
   /* 일정 기능(일정 탭, 거래 달력의 일정 카드, 일정 추가/수정 팝업)에서만 쓰는 글꼴 — 나머지 화면은 기본 글꼴을 그대로 쓴다 */
   .sched-font { font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo',sans-serif; }
   /* 달력 날짜 칸에 표시되는 하루짜리 일정 말풍선(줄바꿈으로 하나씩 쌓임) — 거래 달력과 '일정' 탭이 함께 쓴다 */
-  .sched-pills { display:flex; flex-direction:column; gap:2px; margin-top:1px; overflow:hidden; }
+  .sched-pills { display:flex; flex-direction:column; gap:2px; margin-top:1px; overflow:hidden; min-width:0; }
   .sched-pill { font-size:9.5px; font-weight:600; color:#fff; padding:1px 5px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sched-more { font-size:9px; color:var(--muted); padding-left:3px; }
   @media (max-width:900px){ .sched-pill{ font-size:8.5px; padding:1px 4px; } }
   /* 여러 날짜에 걸친 일정 막대(연속 바) — 칸 좌우 패딩을 음수 마진으로 덮어서 옆 칸과 이어져 보이게 한다 */
-  .sched-bars { display:flex; flex-direction:column; gap:2px; }
+  .sched-bars { display:flex; flex-direction:column; gap:2px; min-width:0; overflow:hidden; }
   .sched-bar { height:14px; line-height:14px; font-size:9.5px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 -7px; padding:0; cursor:pointer; }
   .sched-bar.bar-start { margin-left:0; padding-left:5px; border-top-left-radius:4px; border-bottom-left-radius:4px; }
   .sched-bar.bar-end { margin-right:0; border-top-right-radius:4px; border-bottom-right-radius:4px; }
@@ -380,11 +382,30 @@
   @media (max-width:900px){ .sched-bar{ font-size:8.5px; } .sched-bar.bar-start{ padding-left:4px; } }
   /* '일정' 탭 상단 일간/주간/월간 전환 및 주간·일간 보기의 이전/다음 이동 */
   .sched-toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .sched-toolbar-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-left:auto; }
   .sched-view-toggle { display:flex; gap:6px; }
   .sched-view-toggle button { border:1px solid var(--border); background:var(--card); padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; color:var(--text-secondary); }
   .sched-view-toggle button.active { background:var(--text-primary); color:var(--card); border-color:var(--text-primary); }
   .sched-nav { display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--text-primary); }
   .sched-nav button { width:26px; height:26px; border:1px solid var(--border); background:var(--card); border-radius:50%; font-size:13px; color:var(--text-secondary); }
+  /* 일정 담당자(공통 포함) 필터 — 다른 select류 입력칸과 같은 박스 모양의 버튼. 담당자가 늘어나도
+     옆으로 안 길어지도록 드롭다운 목록으로 여러 개 고를 수 있다 */
+  .sched-owner-filter-wrap { position:relative; }
+  #sched-owner-filter-btn {
+    border:1px solid var(--border); background:var(--card); color:var(--text-secondary);
+    padding:6px 12px; border-radius:10px; font-size:12.5px; font-weight:600;
+  }
+  .sched-owner-filter-menu {
+    position:absolute; top:calc(100% + 6px); right:0; z-index:50; min-width:160px;
+    background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow); padding:6px;
+  }
+  .sched-owner-filter-item { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:8px; font-size:12.5px; color:var(--text-primary); cursor:pointer; white-space:nowrap; }
+  .sched-owner-filter-item:hover { background:var(--page); }
+  .sched-owner-filter-item .chk {
+    width:15px; height:15px; border-radius:4px; border:1.5px solid var(--border); flex:none;
+    display:flex; align-items:center; justify-content:center; font-size:10px; color:#fff; font-weight:700;
+  }
+  .sched-owner-filter-item.active .chk { background:var(--series-1); border-color:var(--series-1); }
   #sched-grid.sched-grid-day { grid-template-columns:1fr; }
   #sched-grid.sched-grid-day .cal-cell { min-height:280px; }
   /* 주간 보기: 하루 한 줄짜리 행리스트 */
@@ -770,7 +791,7 @@
       <div class="cal-split-grid">
         <div class="card">
           <div class="section-title">
-            <h3>일정<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">날짜를 클릭하면 오른쪽에 그날의 일정이 나타나요. 여러 날짜에 걸친 일정은 달력에 막대로 이어서 표시돼요. 매일·매주·매월·매년 반복을 설정할 수 있고, 반복 일정을 수정·삭제하면 반복되는 일정 전체에 적용돼요. 거래내역 → 달력 화면에도 같은 일정이 함께 표시돼요.</span></span></h3>
+            <h3>일정<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">날짜를 클릭하면 오른쪽에 그날의 일정이 나타나요. 여러 날짜에 걸친 일정은 달력에 막대로 이어서 표시돼요. 매일·매주·매월·매년 반복을 설정할 수 있고, 반복 일정을 수정·삭제하면 반복되는 일정 전체에 적용돼요. 담당자를 지정하면 아래 버튼으로 그 사람(또는 공통) 일정만 걸러볼 수 있어요. 거래내역 → 달력 화면에도 같은 일정이 함께 표시돼요.</span></span></h3>
           </div>
           <div class="sched-toolbar">
             <div class="sched-view-toggle">
@@ -778,10 +799,16 @@
               <button type="button" data-sched-mode="week">주간</button>
               <button type="button" class="active" data-sched-mode="month">월간</button>
             </div>
-            <div class="sched-nav" id="sched-nav" style="display:none">
-              <button type="button" id="sched-prev-btn">‹</button>
-              <span id="sched-range-label"></span>
-              <button type="button" id="sched-next-btn">›</button>
+            <div class="sched-toolbar-right">
+              <div class="sched-nav" id="sched-nav" style="display:none">
+                <button type="button" id="sched-prev-btn">‹</button>
+                <span id="sched-range-label"></span>
+                <button type="button" id="sched-next-btn">›</button>
+              </div>
+              <div class="sched-owner-filter-wrap">
+                <button type="button" id="sched-owner-filter-btn">담당자: 전체 ▾</button>
+                <div class="sched-owner-filter-menu" id="sched-owner-filter-menu" style="display:none"></div>
+              </div>
             </div>
           </div>
           <div class="cal-weekdays" id="sched-weekdays">
@@ -1354,6 +1381,9 @@ let calSelectedEventId = null;
 let scheduleSelectedDate = null;
 let scheduleSelectedEventId = null;
 let scheduleViewMode = 'month';
+/* '일정' 탭에서만 쓰는 담당자(공통 포함) 필터 — 비어있으면 전체 표시, 하나 이상 담으면 그 담당자만 표시 */
+let scheduleOwnerFilter = new Set();
+let scheduleOwnerFilterOpen = false;
 /* 달력에서 여는 수입/이체/지출 입력 팝업의 현재 상태 */
 let txModalType = null;
 let txModalEditingId = null;
@@ -3147,6 +3177,17 @@ function occurrencesOnDate(dateStr){
 function eventsOnDate(dateStr){
   return occurrencesOnDate(dateStr).map(o=>o.ev);
 }
+/* 담당자 필터에 걸리는지 확인 — 필터가 비어있거나 담당자를 지정하지 않은 일정은 항상 통과시킨다 */
+function eventMatchesOwnerFilter(ev){
+  if (scheduleOwnerFilter.size === 0) return true;
+  if (!ev.owner) return true;
+  return scheduleOwnerFilter.has(ev.owner);
+}
+/* '일정' 탭 전용: occurrencesOnDate에 담당자 필터를 추가로 적용한다.
+   거래내역 → 달력의 일정 표시는 이 필터의 영향을 받지 않는다(그 화면엔 필터 버튼이 없어서). */
+function scheduleVisibleOccurrencesOnDate(dateStr){
+  return occurrencesOnDate(dateStr).filter(o=>eventMatchesOwnerFilter(o.ev));
+}
 function scheduleDefaultDate(){
   return todayStr().slice(0,7)===currentYM ? todayStr() : `${currentYM}-01`;
 }
@@ -3156,7 +3197,7 @@ function computeLaneAssignments(startDate, endDate){
   const seen = new Map();
   let d = startDate;
   while (d <= endDate){
-    occurrencesOnDate(d).forEach(o=>{
+    scheduleVisibleOccurrencesOnDate(d).forEach(o=>{
       if (o.occStart !== o.occEnd){
         const key = o.ev.id+'|'+o.occStart;
         if (!seen.has(key)) seen.set(key, o);
@@ -3178,7 +3219,7 @@ function computeLaneAssignments(startDate, endDate){
 /* 달력 한 칸의 안쪽 내용(연속 일정 막대 + 하루짜리 일정 말풍선)을 만든다.
    laneOf: computeLaneAssignments()의 결과, maxLanes: 이 칸에 보여줄 최대 막대 줄 수. */
 function buildScheduleCellInner(dateStr, dayNum, holiday, laneOf, maxLanes){
-  const occs = occurrencesOnDate(dateStr);
+  const occs = scheduleVisibleOccurrencesOnDate(dateStr);
   const multi = occs.filter(o=>o.occStart!==o.occEnd);
   const single = occs.filter(o=>o.occStart===o.occEnd);
   const laneRows = [];
@@ -3272,7 +3313,7 @@ function renderScheduleWeekList(container, dates){
   container.innerHTML = dates.map(dateStr=>{
     const dow = dateFromYMD(dateStr).getDay();
     const holiday = KOREAN_HOLIDAYS[dateStr];
-    const occs = occurrencesOnDate(dateStr);
+    const occs = scheduleVisibleOccurrencesOnDate(dateStr);
     const classes = ['sched-week-row'];
     if (dow===0) classes.push('sun');
     if (dow===6) classes.push('sat');
@@ -3304,6 +3345,7 @@ function renderScheduleView(){
   if (!scheduleSelectedDate || scheduleSelectedDate.slice(0,7) !== currentYM) scheduleSelectedDate = scheduleDefaultDate();
 
   document.querySelectorAll('.sched-view-toggle button').forEach(b=> b.classList.toggle('active', b.dataset.schedMode===scheduleViewMode));
+  renderScheduleOwnerFilter();
   const navEl = document.getElementById('sched-nav');
   const weekdaysEl = document.getElementById('sched-weekdays');
   const rangeLabelEl = document.getElementById('sched-range-label');
@@ -3331,6 +3373,28 @@ function renderScheduleView(){
   }
   renderScheduleSideList();
 }
+/* 일정 담당자로 고를 수 있는 전체 목록: 가족 구성원 + '공통'(여러 명이 함께 쓰는 일정용) */
+function scheduleOwnerOptions(){
+  return [...state.members, '공통'];
+}
+/* '일정' 탭 상단의 담당자 필터 드롭다운을 그린다. 담당자가 늘어나도 버튼 줄이 길어지지 않도록
+   목록(체크리스트) 형태로 보여주고, 버튼 글자에는 지금 고른 담당자를 요약해서 보여준다. */
+function renderScheduleOwnerFilter(){
+  const btn = document.getElementById('sched-owner-filter-btn');
+  const menu = document.getElementById('sched-owner-filter-menu');
+  if (!btn || !menu) return;
+  const n = scheduleOwnerFilter.size;
+  const first = n ? [...scheduleOwnerFilter][0] : '';
+  const label = n===0 ? '담당자: 전체' : n===1 ? `담당자: ${first}` : `담당자: ${first} 외 ${n-1}`;
+  btn.textContent = label + ' ▾';
+
+  const rows = [{owner:'', label:'전체'}, ...scheduleOwnerOptions().map(o=>({owner:o, label:o}))];
+  menu.innerHTML = rows.map(r=>{
+    const active = r.owner ? scheduleOwnerFilter.has(r.owner) : n===0;
+    return `<div class="sched-owner-filter-item ${active?'active':''}" data-owner="${escapeHtml(r.owner)}"><span class="chk">${active?'✓':''}</span>${escapeHtml(r.label)}</div>`;
+  }).join('');
+  menu.style.display = scheduleOwnerFilterOpen ? 'block' : 'none';
+}
 /* 일정 목록 한 줄 템플릿 — 거래 달력의 일정 카드와 '일정' 탭에서 함께 쓴다. occ는 occurrencesOnDate()가 주는 { ev, occStart, occEnd }. */
 function scheduleRowHtml(occ, selectedId){
   const { ev, occStart, occEnd } = occ;
@@ -3341,11 +3405,12 @@ function scheduleRowHtml(occ, selectedId){
     if (t) dateLabel += ` · ${t}`;
   }
   const repeatLabel = ev.repeat!=='none' ? ` · ${REPEAT_LABELS[ev.repeat]}` : '';
+  const ownerLabel = ev.owner ? ` · ${escapeHtml(ev.owner)}` : '';
   return `<div class="cal-tx-row ${ev.id===selectedId?'selected':''}" data-ev-id="${ev.id}">
     <span class="legend-dot" style="background:${ev.color}"></span>
     <div class="dtr-main">
       <div>${escapeHtml(ev.title)}</div>
-      <div class="muted-small">${dateLabel}${repeatLabel}${ev.memo?' · '+escapeHtml(ev.memo):''}</div>
+      <div class="muted-small">${dateLabel}${repeatLabel}${ownerLabel}${ev.memo?' · '+escapeHtml(ev.memo):''}</div>
     </div>
   </div>`;
 }
@@ -3355,7 +3420,7 @@ function renderScheduleSideList(){
   const labelEl = document.getElementById('sched-side-date-label');
   if (labelEl) labelEl.textContent = formatDateKorean(scheduleSelectedDate);
 
-  const occs = occurrencesOnDate(scheduleSelectedDate);
+  const occs = scheduleVisibleOccurrencesOnDate(scheduleSelectedDate);
   if (scheduleSelectedEventId && !occs.some(o=>o.ev.id===scheduleSelectedEventId)) scheduleSelectedEventId = null;
   const box = document.getElementById('sched-event-list');
   if (!box) return;
@@ -3386,10 +3451,15 @@ function openEventModal(existing, defaultDate){
   const allDay = existing ? existing.allDay : true;
   const initialColor = existing ? existing.color : PALETTE[0];
   const initialRepeat = existing ? existing.repeat : 'none';
+  const initialOwner = existing ? (existing.owner || '') : '';
   openModal(`
     <div class="sched-font">
     <h3>${isEdit?'일정 수정':'일정 추가'}</h3>
     <div class="field"><label>제목</label><input id="m-title" value="${existing?escapeHtml(existing.title):''}" placeholder="예: 병원 예약"></div>
+    <div class="field"><label>담당자${infoTip('여러 명이 함께 하는 일정이면 "공통"을 선택하세요. 위 담당자 필터 버튼으로 그 사람(또는 공통) 일정만 골라볼 수 있어요.')}</label><select id="m-owner">
+      <option value="">(미지정)</option>
+      ${scheduleOwnerOptions().map(o=>`<option value="${escapeHtml(o)}" ${initialOwner===o?'selected':''}>${escapeHtml(o)}</option>`).join('')}
+    </select></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
       <div class="field"><label>시작일</label><input type="date" id="m-date" value="${dateVal}"></div>
       <div class="field"><label>종료일</label><input type="date" id="m-end-date" value="${endDateVal}"></div>
@@ -3469,7 +3539,8 @@ function openEventModal(existing, defaultDate){
     const repeat = document.getElementById('m-repeat').value;
     const repeatUntil = repeat!=='none' ? (document.getElementById('m-repeat-until').value || '') : '';
     const memo = document.getElementById('m-memo').value.trim();
-    const payload = { title, date, endDate, allDay:allDayVal, startTime, endTime, repeat, repeatUntil, color:selectedColor, memo };
+    const owner = document.getElementById('m-owner').value;
+    const payload = { title, date, endDate, allDay:allDayVal, startTime, endTime, repeat, repeatUntil, color:selectedColor, memo, owner };
     if (isEdit){ Object.assign(existing, payload); }
     else { state.events.push({ id:uid('evt'), ...payload }); }
     markDirty(); closeModal();
@@ -5448,6 +5519,27 @@ document.addEventListener('DOMContentLoaded', ()=>{
       scheduleViewMode = btn.dataset.schedMode;
       renderAll();
     });
+  });
+  document.getElementById('sched-owner-filter-btn').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    scheduleOwnerFilterOpen = !scheduleOwnerFilterOpen;
+    renderScheduleOwnerFilter();
+  });
+  document.getElementById('sched-owner-filter-menu').addEventListener('click', (e)=>{
+    const item = e.target.closest('.sched-owner-filter-item');
+    if (!item) return;
+    const owner = item.dataset.owner;
+    if (!owner) scheduleOwnerFilter.clear();
+    else if (scheduleOwnerFilter.has(owner)) scheduleOwnerFilter.delete(owner);
+    else scheduleOwnerFilter.add(owner);
+    scheduleSelectedEventId = null;
+    renderAll();
+  });
+  document.addEventListener('click', (e)=>{
+    if (!scheduleOwnerFilterOpen) return;
+    if (e.target.closest('.sched-owner-filter-wrap')) return;
+    scheduleOwnerFilterOpen = false;
+    renderScheduleOwnerFilter();
   });
   document.getElementById('sched-prev-btn').addEventListener('click', ()=>{
     scheduleSelectedDate = addDaysStr(scheduleSelectedDate, scheduleViewMode==='week' ? -7 : -1);
