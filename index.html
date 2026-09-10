@@ -373,13 +373,17 @@
   .sched-pill { font-size:9.5px; font-weight:600; color:#fff; padding:1px 5px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sched-more { font-size:9px; color:var(--muted); padding-left:3px; }
   @media (max-width:900px){ .sched-pill{ font-size:8.5px; padding:1px 4px; } }
-  /* 여러 날짜에 걸친 일정 막대(연속 바) — 칸 좌우 패딩을 음수 마진으로 덮어서 옆 칸과 이어져 보이게 한다 */
+  /* 여러 날짜에 걸친 일정 막대(연속 바) — 칸 좌우 패딩(7px) + 그리드 칸 사이 간격(1px)까지 음수 마진으로
+     덮어서, 이어지는 구간에서는 옆 칸과 색이 완전히 붙어 보이게 한다(진짜 시작/끝 쪽만 그대로 둠). */
   .sched-bars { display:flex; flex-direction:column; gap:2px; min-width:0; overflow:hidden; }
-  .sched-bar { height:14px; line-height:14px; font-size:9.5px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 -7px; padding:0; cursor:pointer; }
+  .sched-bar { height:14px; line-height:14px; font-size:9.5px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 -8px; padding:0; cursor:pointer; }
   .sched-bar.bar-start { margin-left:0; padding-left:5px; border-top-left-radius:4px; border-bottom-left-radius:4px; }
   .sched-bar.bar-end { margin-right:0; border-top-right-radius:4px; border-bottom-right-radius:4px; }
   .sched-bar-spacer { height:14px; }
   @media (max-width:900px){ .sched-bar{ font-size:8.5px; } .sched-bar.bar-start{ padding-left:4px; } }
+  /* 거래 달력 날짜 칸의 일정 요약 점 — 마우스오버(웹)/탭(모바일)하면 그 날의 일정이 목록으로 뜬다 */
+  .cal-event-dots { display:flex; gap:3px; flex-wrap:wrap; padding:2px 0; cursor:pointer; }
+  .cal-event-dot { width:6px; height:6px; border-radius:50%; flex:none; }
   /* '일정' 탭 상단 일간/주간/월간 전환 및 주간·일간 보기의 이전/다음 이동 */
   .sched-toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
   .sched-toolbar-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-left:auto; }
@@ -2998,16 +3002,10 @@ function renderCalendarView(){
     if (holiday) classes.push('holiday');
     if (dateStr === todayStrVal) classes.push('today');
     if (dateStr === calSelectedDate) classes.push('selected');
-    const shownOccs = occs.slice(0,2);
-    const moreOccs = occs.length - shownOccs.length;
     cells += `<div class="${classes.join(' ')}" data-date="${dateStr}">
       <div class="cal-daynum">${d}</div>
       ${holiday ? `<div class="cal-holiday">${escapeHtml(holiday)}</div>` : ''}
-      ${occs.length ? `<div class="sched-pills">${shownOccs.map(o=>{
-        const timeLb = eventTimeLabel(o.ev);
-        const label = (timeLb?timeLb+' ':'') + o.ev.title;
-        return `<div class="sched-pill" style="background:${o.ev.color}">${escapeHtml(label)}</div>`;
-      }).join('')}${moreOccs>0?`<div class="sched-more">+${moreOccs}</div>`:''}</div>` : ''}
+      ${occs.length ? `<div class="cal-event-dots" data-date="${dateStr}">${occs.slice(0,6).map(o=>`<span class="cal-event-dot" style="background:${o.ev.color}"></span>`).join('')}</div>` : ''}
       <div class="cal-amounts">
         ${totals.income ? `<div class="cal-amt income">입금 ${fmtWonCompact(totals.income)}</div>` : ''}
         ${totals.expense ? `<div class="cal-amt expense">지출 ${fmtWonCompact(totals.expense)}</div>` : ''}
@@ -3155,6 +3153,19 @@ function occurrenceStartCovering(ev, dateStr){
 function eventTimeLabel(ev){
   if (ev.allDay || !ev.startTime) return '';
   return ev.endTime ? `${ev.startTime}-${ev.endTime}` : ev.startTime;
+}
+/* 거래 달력의 일정 점(.cal-event-dots)에 마우스오버/탭했을 때 보여줄 그 날 일정 목록(행으로 나열) */
+function calEventTooltipHtml(dateStr){
+  const occs = occurrencesOnDate(dateStr);
+  if (!occs.length) return '';
+  const rows = occs.map(o=>{
+    const timeLb = eventTimeLabel(o.ev);
+    const isMulti = o.occStart !== o.occEnd;
+    const rangeLb = isMulti ? `${mdLabel(o.occStart)}~${mdLabel(o.occEnd)} ` : '';
+    const label = (timeLb?timeLb+' ':'') + rangeLb + o.ev.title;
+    return `<div class="tt-row"><span class="tt-dot" style="background:${o.ev.color}"></span><span>${escapeHtml(label)}</span></div>`;
+  }).join('');
+  return `<div style="font-weight:700;margin-bottom:4px">${escapeHtml(formatDateKorean(dateStr))} 일정</div>${rows}`;
 }
 /* 특정 날짜를 덮고 있는 일정 회차 목록 { ev, occStart, occEnd }.
    여러 날짜짜리(연속) 일정을 먼저, 그 다음 종일, 그 다음 시간순으로 정렬한다. */
@@ -5452,10 +5463,24 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   });
   document.getElementById('cal-grid').addEventListener('click', (e)=>{
+    const dots = e.target.closest('.cal-event-dots');
+    if (dots){
+      showTooltip(e.clientX, e.clientY, calEventTooltipHtml(dots.dataset.date));
+      return;
+    }
     const cell = e.target.closest('.cal-cell');
     if (!cell || cell.classList.contains('outside')) return;
     calSelectDate(cell.dataset.date);
     if (window.matchMedia('(max-width:900px)').matches) openCalDayActionModal(cell.dataset.date);
+  });
+  document.getElementById('cal-grid').addEventListener('mouseover', (e)=>{
+    const dots = e.target.closest('.cal-event-dots');
+    if (!dots) return;
+    showTooltip(e.clientX, e.clientY, calEventTooltipHtml(dots.dataset.date));
+  });
+  document.getElementById('cal-grid').addEventListener('mouseout', (e)=>{
+    const dots = e.target.closest('.cal-event-dots');
+    if (dots && !dots.contains(e.relatedTarget)) hideTooltip();
   });
   document.getElementById('cal-add-income-btn').addEventListener('click', ()=> openTxEntryModal('수입', calSelectedDate, null));
   document.getElementById('cal-add-transfer-btn').addEventListener('click', ()=> openTxEntryModal('이체', calSelectedDate, null));
@@ -5540,6 +5565,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if (e.target.closest('.sched-owner-filter-wrap')) return;
     scheduleOwnerFilterOpen = false;
     renderScheduleOwnerFilter();
+  });
+  /* 모바일에는 hover가 없어 일정 점을 탭한 뒤 다른 곳을 탭하면 툴팁이 닫히도록 한다 */
+  document.addEventListener('click', (e)=>{
+    if (e.target.closest('.cal-event-dots')) return;
+    hideTooltip();
   });
   document.getElementById('sched-prev-btn').addEventListener('click', ()=>{
     scheduleSelectedDate = addDaysStr(scheduleSelectedDate, scheduleViewMode==='week' ? -7 : -1);
