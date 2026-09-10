@@ -336,7 +336,10 @@
   .cal-cell.outside { background:var(--page); cursor:default; opacity:.45; }
   .cal-cell.outside:hover { background:var(--page); }
   .cal-cell.selected { outline:2px solid var(--good); outline-offset:-2px; }
-  .cal-daynum { font-size:12.5px; font-weight:700; color:var(--text-primary); }
+  /* line-height를 오늘 동그라미와 같은 21px로 고정해서, 오늘 칸이든 아니든 날짜 숫자 줄의
+     실제 높이가 항상 같게 만든다 — 안 그러면 오늘 칸만 아래 내용(연속 막대 등)이 밀려서
+     옆 칸과 줄이 안 맞아 보인다. */
+  .cal-daynum { font-size:12.5px; font-weight:700; color:var(--text-primary); line-height:21px; }
   .cal-cell.sun .cal-daynum, .cal-cell.holiday .cal-daynum { color:var(--critical); }
   .cal-cell.sat .cal-daynum { color:var(--series-1); }
   /* 오늘 날짜는 칸 테두리 대신 날짜 숫자 위에 동그라미를 그려서 표시한다 */
@@ -381,8 +384,11 @@
   .sched-bar { height:14px; line-height:14px; font-size:9.5px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 -8px; padding:0; cursor:pointer; }
   .sched-bar.bar-start { margin-left:0; padding-left:8px; border-top-left-radius:4px; border-bottom-left-radius:4px; }
   .sched-bar.bar-end { margin-right:0; padding-right:6px; border-top-right-radius:4px; border-bottom-right-radius:4px; }
+  /* 토→일로 줄이 바뀌면서 이름이 다시 보이는 칸(진짜 시작은 아님) — 모서리는 각지게 두어 "이어지는
+     중"임을 구분하되, 글자는 bar-start와 같은 여백을 줘서 왼쪽 끝에 쏠려 보이지 않게 한다 */
+  .sched-bar.row-label { padding-left:8px; }
   .sched-bar-spacer { height:14px; }
-  @media (max-width:900px){ .sched-bar{ font-size:8.5px; } .sched-bar.bar-start{ padding-left:6px; } }
+  @media (max-width:900px){ .sched-bar{ font-size:8.5px; } .sched-bar.bar-start{ padding-left:6px; } .sched-bar.row-label{ padding-left:6px; } }
   /* 거래 달력 날짜 칸의 일정 요약 점 — 마우스오버(웹)/탭(모바일)하면 그 날의 일정이 목록으로 뜬다 */
   .cal-event-dots { display:flex; gap:3px; flex-wrap:wrap; padding:2px 0; cursor:pointer; }
   .cal-event-dot { width:6px; height:6px; border-radius:50%; flex:none; }
@@ -956,7 +962,11 @@
         </div>
         <div class="card" style="margin-bottom:18px">
           <h3>🧪 테스트 데이터<span class="info-tip" tabindex="0" role="button" aria-label="도움말">?<span class="info-tip-bubble">화면·차트를 확인할 때마다 지출·수입·이체를 직접 입력하지 않아도 되도록, 현재 보고 있는 달에 예시 거래를 몇 건 자동으로 추가해줘요. 다 확인한 뒤에는 거래내역에서 "테스트 데이터" 메모가 붙은 항목들을 직접 지워주세요.</span></span></h3>
-          <button class="btn" id="add-test-data-btn">➕ 이번 달에 테스트 거래 추가</button>
+          <div style="display:flex; gap:10px; flex-wrap:wrap">
+            <button class="btn" id="add-test-data-btn">➕ 이번 달에 테스트 거래 추가</button>
+            <button class="btn" id="add-test-events-btn">📅 이번 달에 테스트 일정 추가</button>
+          </div>
+          <p class="muted-small" style="margin-top:8px">테스트 일정은 줄바꿈(토→일) 걸침, 하루짜리, 한 줄 안 연속, 겹침, 매주 반복, 하루에 여러 건 쌓였을 때 칸이 세로로 늘어나는지 등 달력 표시를 확인할 수 있는 여러 사례를 한 번에 넣어줘요.</p>
         </div>
         <div class="card" style="margin-bottom:18px">
           <h3>👥 함께 쓰는 사람</h3>
@@ -3251,7 +3261,10 @@ function buildScheduleCellInner(dateStr, dayNum, holiday, laneOf, maxLanes){
     const showLabel = isStart || dow===0;
     const timeLb = eventTimeLabel(o.ev);
     const label = showLabel ? escapeHtml((timeLb?timeLb+' ':'')+o.ev.title) : '';
-    const cls = 'sched-bar' + (isStart?' bar-start':'') + (isEnd?' bar-end':'');
+    /* dow===0(그 줄의 첫 칸)라서 진짜 시작일이 아닌데도 이름을 다시 보여주는 경우, bar-start와
+       똑같이 왼쪽 여백을 줘서 글자가 칸 왼쪽 끝에 붙어 읽기 힘들어지는 걸 막는다(둥근 모서리는 주지
+       않아 "진짜 시작"과는 구분되게 한다). */
+    const cls = 'sched-bar' + (isStart?' bar-start':'') + (isEnd?' bar-end':'') + (showLabel && !isStart ? ' row-label' : '');
     barsHtml += `<div class="${cls}" style="background:${o.ev.color}" data-ev-id="${o.ev.id}">${label}</div>`;
   }
   const maxPillSlots = Math.max(0, maxLanes - shownLaneCount);
@@ -3299,7 +3312,7 @@ function renderScheduleMonthGrid(grid){
   for (let d=1; d<=daysInMonth; d++){
     const dateStr = `${currentYM}-${String(d).padStart(2,'0')}`;
     const { classes, holiday } = scheduleCellClasses(dateStr, todayStrVal);
-    cells += `<div class="${classes.join(' ')}" data-date="${dateStr}">${buildScheduleCellInner(dateStr, d, holiday, laneOf, 2)}</div>`;
+    cells += `<div class="${classes.join(' ')}" data-date="${dateStr}">${buildScheduleCellInner(dateStr, d, holiday, laneOf, Infinity)}</div>`;
   }
   const totalCells = firstDow + daysInMonth;
   const trailing = (7 - (totalCells % 7)) % 7;
@@ -3382,7 +3395,7 @@ function renderScheduleView(){
     weekdaysEl.style.display = 'none';
     grid.className = 'cal-grid sched-grid-day';
     rangeLabelEl.textContent = `${formatDateKorean(scheduleSelectedDate)} · ${weekOfMonth(scheduleSelectedDate)}주차`;
-    renderScheduleRowGrid(grid, [scheduleSelectedDate], 6);
+    renderScheduleRowGrid(grid, [scheduleSelectedDate], Infinity);
   }
   renderScheduleSideList();
 }
@@ -5205,6 +5218,45 @@ function addTestTransactions(){
   alert(`테스트 거래 ${testTxs.length}건을 ${ymLabel(currentYM)}에 추가했어요.`);
 }
 
+/* 일정 달력 표시(줄바꿈 걸침, 하루짜리, 한 줄 안 연속, 겹침, 반복)를 한 번에 확인할 수 있도록
+   이번 달에 예시 일정을 몇 건 자동으로 추가한다. */
+function addTestEvents(){
+  if (!confirm('이번 달(' + ymLabel(currentYM) + ')에 일정 표시를 확인할 테스트 일정을 추가할까요?\n확인 후에는 일정 탭에서 "테스트" 메모가 붙은 항목을 직접 지워주세요.')) return;
+
+  const [y,m] = currentYM.split('-').map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  const dayStr = (d)=> `${currentYM}-${String(Math.min(Math.max(d,1),lastDay)).padStart(2,'0')}`;
+  // 토요일→일요일로 줄이 바뀌는 지점을 찾는다(다음 날도 이번 달 안에 있어야 하므로 달 끝쪽은 피한다)
+  let satDay = null;
+  for (let d=1; d<=lastDay-2; d++){
+    if (new Date(y, m-1, d).getDay() === 6){ satDay = d; break; }
+  }
+  const owner1 = state.members[0] || '';
+  const owner2 = state.members[1] || '';
+
+  const testEvents = [
+    { id:uid('evt'), title:'하루짜리 일정', date:dayStr(3), endDate:dayStr(3), allDay:false, startTime:'14:00', endTime:'15:00', repeat:'none', repeatUntil:'', color:PALETTE[4], memo:'테스트', owner:owner2 },
+    { id:uid('evt'), title:'한 줄 안 연속 일정', date:dayStr(9), endDate:dayStr(11), allDay:true, startTime:'', endTime:'', repeat:'none', repeatUntil:'', color:PALETTE[0], memo:'테스트', owner:'공통' },
+    { id:uid('evt'), title:'겹침 A', date:dayStr(9), endDate:dayStr(13), allDay:true, startTime:'', endTime:'', repeat:'none', repeatUntil:'', color:PALETTE[6], memo:'테스트', owner:owner1 },
+    { id:uid('evt'), title:'겹침 B', date:dayStr(12), endDate:dayStr(15), allDay:true, startTime:'', endTime:'', repeat:'none', repeatUntil:'', color:PALETTE[3], memo:'테스트', owner:owner2 },
+    { id:uid('evt'), title:'매주 반복', date:dayStr(4), endDate:dayStr(4), allDay:true, startTime:'', endTime:'', repeat:'weekly', repeatUntil:'', color:PALETTE[7], memo:'테스트', owner:'' }
+  ];
+  if (satDay !== null){
+    testEvents.unshift({ id:uid('evt'), title:'줄바꿈 테스트', date:dayStr(satDay), endDate:dayStr(satDay+2), allDay:true, startTime:'', endTime:'', repeat:'none', repeatUntil:'', color:PALETTE[2], memo:'테스트', owner:owner1 });
+  }
+  // 한 칸에 많이 쌓였을 때 "+N"으로 숨기지 않고 칸이 세로로 계속 늘어나는지 확인하는 사례(하루에 6건)
+  const heavyDay = 22;
+  const heavyTitles = ['새벽 운동','아침 회의','점심 약속','오후 미팅','저녁 모임','야간 스터디'];
+  heavyTitles.forEach((title,i)=>{
+    testEvents.push({ id:uid('evt'), title, date:dayStr(heavyDay), endDate:dayStr(heavyDay), allDay:false, startTime:`${8+i*2}:00`, endTime:'', repeat:'none', repeatUntil:'', color:PALETTE[i%PALETTE.length], memo:'테스트', owner:i%2?owner1:owner2 });
+  });
+
+  state.events.push(...testEvents);
+  markDirty();
+  renderAll();
+  alert(`테스트 일정 ${testEvents.length}건을 ${ymLabel(currentYM)}에 추가했어요.` + (satDay===null ? ' (이번 달엔 줄바꿈 사례를 만들 토요일 여유가 없어 그 사례는 건너뛰었어요.)' : ''));
+}
+
 function exportTransactionsExcel(){
   if (typeof XLSX === 'undefined'){
     alert('엑셀 내보내기에 필요한 라이브러리를 아직 못 불러왔어요. 인터넷 연결을 확인하시고 잠시 후 다시 시도해주세요.');
@@ -5617,6 +5669,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('save-json-btn').onclick = exportJson;
   document.getElementById('export-excel-btn').onclick = exportTransactionsExcel;
   document.getElementById('add-test-data-btn').onclick = addTestTransactions;
+  document.getElementById('add-test-events-btn').onclick = addTestEvents;
   document.getElementById('load-json-btn').onclick = ()=>document.getElementById('load-json-input').click();
   document.getElementById('load-json-input').onchange = (e)=>{
     if (e.target.files[0]) importJsonFile(e.target.files[0]);
