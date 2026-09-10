@@ -370,19 +370,19 @@
   .sched-font { font-family:'맑은 고딕','Malgun Gothic','Apple SD Gothic Neo',sans-serif; }
   /* 달력 날짜 칸에 표시되는 하루짜리 일정 말풍선(줄바꿈으로 하나씩 쌓임) — 거래 달력과 '일정' 탭이 함께 쓴다 */
   .sched-pills { display:flex; flex-direction:column; gap:2px; margin-top:1px; overflow:hidden; min-width:0; }
-  .sched-pill { font-size:9.5px; font-weight:600; color:#fff; padding:1px 5px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sched-pill { font-size:9.5px; font-weight:600; color:#fff; padding:2px 8px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .sched-more { font-size:9px; color:var(--muted); padding-left:3px; }
-  @media (max-width:900px){ .sched-pill{ font-size:8.5px; padding:1px 4px; } }
+  @media (max-width:900px){ .sched-pill{ font-size:8.5px; padding:2px 6px; } }
   /* 여러 날짜에 걸친 일정 막대(연속 바) — 칸 좌우 패딩(7px) + 그리드 칸 사이 간격(1px)까지 음수 마진으로
      덮어서, 이어지는 구간에서는 옆 칸과 색이 완전히 붙어 보이게 한다(진짜 시작/끝 쪽만 그대로 둠). */
   /* overflow:hidden을 주면 막대가 칸 밖(격자선 쪽)으로 번지는 걸 그대로 잘라내 버려서 연속 막대가
      칸 사이에서 끊겨 보인다 — 그래서 여기엔 overflow를 주지 않는다(폭 고정은 .cal-grid의 minmax(0,1fr)가 담당). */
   .sched-bars { display:flex; flex-direction:column; gap:2px; min-width:0; }
   .sched-bar { height:14px; line-height:14px; font-size:9.5px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 -8px; padding:0; cursor:pointer; }
-  .sched-bar.bar-start { margin-left:0; padding-left:5px; border-top-left-radius:4px; border-bottom-left-radius:4px; }
-  .sched-bar.bar-end { margin-right:0; border-top-right-radius:4px; border-bottom-right-radius:4px; }
+  .sched-bar.bar-start { margin-left:0; padding-left:8px; border-top-left-radius:4px; border-bottom-left-radius:4px; }
+  .sched-bar.bar-end { margin-right:0; padding-right:6px; border-top-right-radius:4px; border-bottom-right-radius:4px; }
   .sched-bar-spacer { height:14px; }
-  @media (max-width:900px){ .sched-bar{ font-size:8.5px; } .sched-bar.bar-start{ padding-left:4px; } }
+  @media (max-width:900px){ .sched-bar{ font-size:8.5px; } .sched-bar.bar-start{ padding-left:6px; } }
   /* 거래 달력 날짜 칸의 일정 요약 점 — 마우스오버(웹)/탭(모바일)하면 그 날의 일정이 목록으로 뜬다 */
   .cal-event-dots { display:flex; gap:3px; flex-wrap:wrap; padding:2px 0; cursor:pointer; }
   .cal-event-dot { width:6px; height:6px; border-radius:50%; flex:none; }
