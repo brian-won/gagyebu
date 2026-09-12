@@ -398,6 +398,10 @@
   .sched-view-toggle { display:flex; gap:6px; }
   .sched-view-toggle button { border:1px solid var(--border); background:var(--card); padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; color:var(--text-secondary); }
   .sched-view-toggle button.active { background:var(--text-primary); color:var(--card); border-color:var(--text-primary); }
+  /* 일정 추가/수정 팝업의 양력/음력 선택 */
+  .cal-type-toggle { display:flex; gap:6px; }
+  .cal-type-toggle button { border:1px solid var(--border); background:var(--card); padding:6px 14px; border-radius:20px; font-size:12.5px; font-weight:600; color:var(--text-secondary); }
+  .cal-type-toggle button.active { background:var(--text-primary); color:var(--card); border-color:var(--text-primary); }
   .sched-nav { display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--text-primary); }
   .sched-nav button { width:26px; height:26px; border:1px solid var(--border); background:var(--card); border-radius:50%; font-size:13px; color:var(--text-secondary); }
   /* 일정 담당자(공통 포함) 필터 — 다른 select류 입력칸과 같은 박스 모양의 버튼. 담당자가 늘어나도
@@ -966,7 +970,7 @@
             <button class="btn" id="add-test-data-btn">➕ 이번 달에 테스트 거래 추가</button>
             <button class="btn" id="add-test-events-btn">📅 이번 달에 테스트 일정 추가</button>
           </div>
-          <p class="muted-small" style="margin-top:8px">테스트 일정은 줄바꿈(토→일) 걸침, 하루짜리, 한 줄 안 연속, 겹침, 매주 반복, 하루에 여러 건 쌓였을 때 칸이 세로로 늘어나는지 등 달력 표시를 확인할 수 있는 여러 사례를 한 번에 넣어줘요.</p>
+          <p class="muted-small" style="margin-top:8px">테스트 일정은 줄바꿈(토→일) 걸침, 하루짜리, 한 줄 안 연속, 겹침, 매주 반복, 하루에 여러 건 쌓였을 때 칸이 세로로 늘어나는지, 음력 변환(오늘 날짜 · 추석 매년 반복) 등 달력 표시를 확인할 수 있는 여러 사례를 한 번에 넣어줘요.</p>
         </div>
         <div class="card" style="margin-bottom:18px">
           <h3>👥 함께 쓰는 사람</h3>
@@ -3104,6 +3108,133 @@ function renderCalSideLists(){
   }
 }
 
+/* ============================== 음력 ↔ 양력 변환 (1900~2100년) ==============================
+   국제적으로 널리 쓰이는 음력 데이터 테이블(윤달 위치·월별 대/소월 정보)을 이용한 변환.
+   출처: yize/solarlunar(ISC 라이선스, https://github.com/yize/solarlunar) — 원 알고리즘은
+   jjonline/calendar.js. 필요한 변환 로직만 가져와 이 앱에 맞게 다시 작성했다.
+   참고: 이 데이터는 중국 기준 천문 계산이라, 아주 드물게(수십 년에 한두 번) 한국 공식 음력과
+   설날 등의 날짜가 하루 차이가 날 수 있다. */
+const LUNAR_INFO = [0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+  0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
+  0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
+  0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
+  0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
+  0x06ca0,0x0b550,0x15355,0x04da0,0x0a5b0,0x14573,0x052b0,0x0a9a8,0x0e950,0x06aa0,
+  0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
+  0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b6a0,0x195a6,
+  0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,
+  0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x05ac0,0x0ab60,0x096d5,0x092e0,
+  0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,
+  0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,
+  0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,
+  0x05aa0,0x076a3,0x096d0,0x04afb,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,
+  0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0,
+  0x14b63,0x09370,0x049f8,0x04970,0x064b0,0x168a6,0x0ea50,0x06b20,0x1a6c4,0x0aae0,
+  0x092e0,0x0d2e3,0x0c960,0x0d557,0x0d4a0,0x0da50,0x05d55,0x056a0,0x0a6d0,0x055d4,
+  0x052d0,0x0a9b8,0x0a950,0x0b4a0,0x0b6a6,0x0ad50,0x055a0,0x0aba4,0x0a5b0,0x052b0,
+  0x0b273,0x06930,0x07337,0x06aa0,0x0ad50,0x14b55,0x04b60,0x0a570,0x054e4,0x0d160,
+  0x0e968,0x0d520,0x0daa0,0x16aa6,0x056d0,0x04ae0,0x0a9d4,0x0a4d0,0x0d150,0x0f252,
+  0x0d520];
+const SOLAR_MONTH_DAYS_TABLE = [31,28,31,30,31,30,31,31,30,31,30,31];
+function lunarYearDays(y){
+  let sum = 348;
+  const info = LUNAR_INFO[y-1900];
+  for (let i=0x8000; i>0x8; i>>=1){ sum += (info & i) ? 1 : 0; }
+  return sum + lunarLeapDays(y);
+}
+function lunarLeapMonth(y){ return LUNAR_INFO[y-1900] & 0xf; }
+function lunarLeapDays(y){
+  if (lunarLeapMonth(y)) return (LUNAR_INFO[y-1900] & 0x10000) ? 30 : 29;
+  return 0;
+}
+function lunarMonthDays(y, m){
+  if (m>12 || m<1) return -1;
+  return (LUNAR_INFO[y-1900] & (0x10000 >> m)) ? 30 : 29;
+}
+function solarMonthDaysFor(y, m){
+  if (m>12 || m<1) return -1;
+  if (m===2) return ((y%4===0 && y%100!==0) || y%400===0) ? 29 : 28;
+  return SOLAR_MONTH_DAYS_TABLE[m-1];
+}
+/* 양력 y-m-d를 음력 {lYear,lMonth,lDay,isLeap}로 변환. 범위(1900-01-31~2100-12-31) 밖이거나 잘못된 값이면 null */
+function solarToLunar(y, m, d){
+  y = Number(y); m = Number(m); d = Number(d);
+  if (!y || !m || !d) return null;
+  if (y<1900 || y>2100) return null;
+  if (y===1900 && m===1 && d<31) return null;
+  if (m<1 || m>12) return null;
+  if (d<1 || d>solarMonthDaysFor(y,m)) return null;
+
+  let offset = Math.round((Date.UTC(y,m-1,d) - Date.UTC(1900,0,31)) / 86400000);
+  let lY;
+  let daysOfYear = 0;
+  for (lY=1900; lY<2101 && offset>0; lY++){
+    daysOfYear = lunarYearDays(lY);
+    offset -= daysOfYear;
+  }
+  if (offset<0){ offset += daysOfYear; lY--; }
+
+  const leapM = lunarLeapMonth(lY);
+  let isLeap = false;
+  let lM, daysOfMonth = 0;
+  for (lM=1; lM<13 && offset>0; lM++){
+    if (leapM>0 && lM===leapM+1 && !isLeap){
+      lM--; isLeap = true;
+      daysOfMonth = lunarLeapDays(lY);
+    } else {
+      daysOfMonth = lunarMonthDays(lY, lM);
+    }
+    if (isLeap && lM===leapM+1) isLeap = false;
+    offset -= daysOfMonth;
+  }
+  if (offset===0 && leapM>0 && lM===leapM+1){
+    if (isLeap) isLeap = false;
+    else { isLeap = true; lM--; }
+  }
+  if (offset<0){ offset += daysOfMonth; lM--; }
+
+  return { lYear: lY, lMonth: lM, lDay: offset+1, isLeap };
+}
+/* 음력 y-m-d(윤달이면 isLeapMonth=true)를 양력 {year,month,day}로 변환. 범위 밖이거나 잘못된 값이면 null */
+function lunarToSolar(y, m, d, isLeapMonth){
+  y = Number(y); m = Number(m); d = Number(d);
+  if (!y || !m || !d) return null;
+  if (y<1900 || y>2100) return null;
+  const leapM = lunarLeapMonth(y);
+  if (isLeapMonth && leapM!==m) return null;
+  if ((y===2100 && m===12 && d>1) || (y===1900 && m===1 && d<31)) return null;
+  const day = lunarMonthDays(y, m);
+  if (d>day) return null;
+
+  let offset = 0;
+  for (let i=1900; i<y; i++) offset += lunarYearDays(i);
+  let isAdd = false;
+  for (let i=1; i<m; i++){
+    const leap = lunarLeapMonth(y);
+    if (!isAdd && leap<=i && leap>0){ offset += lunarLeapDays(y); isAdd = true; }
+    offset += lunarMonthDays(y, i);
+  }
+  if (isLeapMonth) offset += day;
+
+  const stamp = Date.UTC(1900,1,30);
+  const solarDate = new Date((offset + d - 31) * 86400000 + stamp);
+  return { year: solarDate.getUTCFullYear(), month: solarDate.getUTCMonth()+1, day: solarDate.getUTCDate() };
+}
+/* 날짜 입력칸(<input type=date>)에서 고른 "YYYY-MM-DD"를 음력 연/월/일로 그대로 해석해 양력으로 변환 */
+function lunarPickerToSolar(pickerVal, isLeap){
+  const [ly,lm,ld] = pickerVal.split('-').map(Number);
+  const solar = lunarToSolar(ly, lm, ld, isLeap);
+  if (!solar) return null;
+  return `${solar.year}-${String(solar.month).padStart(2,'0')}-${String(solar.day).padStart(2,'0')}`;
+}
+/* 저장된 양력 날짜를 날짜 입력칸에 음력으로 보여주기 위해 "YYYY-MM-DD" 형태(연=음력연,월=음력월,일=음력일)로 되돌린다 */
+function solarToLunarPickerValue(solarVal){
+  const [sy,sm,sd] = solarVal.split('-').map(Number);
+  const lunar = solarToLunar(sy,sm,sd);
+  if (!lunar) return solarVal;
+  return `${lunar.lYear}-${String(lunar.lMonth).padStart(2,'0')}-${String(lunar.lDay).padStart(2,'0')}`;
+}
+
 /* ============================== 일정(캘린더) 기능 ============================== */
 /* "YYYY-MM-DD" 문자열을 로컬 자정 기준 Date로 만든다 — new Date(문자열)은 UTC로 해석돼
    시간대에 따라 하루가 밀릴 수 있어서, 항상 연/월/일을 직접 분해해서 만든다. */
@@ -3140,6 +3271,14 @@ function isEventOnDate(ev, dateStr){
     case 'weekly': return daysBetweenStr(ev.date, dateStr) % 7 === 0;
     case 'monthly': return dateFromYMD(dateStr).getDate() === dateFromYMD(ev.date).getDate();
     case 'yearly': {
+      /* 음력 기준 매년 반복(예: 추석·생일)은 해마다 양력 날짜가 달라지므로, 후보 날짜를 다시
+         음력으로 변환해서 저장해둔 음력 월/일(윤달 여부 포함)과 같은지로 판단한다. */
+      if (ev.calendarType === 'lunar' && ev.lunarMonth){
+        const [cy,cm,cd] = dateStr.split('-').map(Number);
+        const lunar = solarToLunar(cy,cm,cd);
+        if (!lunar) return false;
+        return lunar.lMonth===ev.lunarMonth && lunar.lDay===ev.lunarDay && !!lunar.isLeap===!!ev.lunarLeap;
+      }
       const a = dateFromYMD(dateStr), b = dateFromYMD(ev.date);
       return a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
     }
@@ -3432,11 +3571,12 @@ function scheduleRowHtml(occ, selectedId){
   }
   const repeatLabel = ev.repeat!=='none' ? ` · ${REPEAT_LABELS[ev.repeat]}` : '';
   const ownerLabel = ev.owner ? ` · ${escapeHtml(ev.owner)}` : '';
+  const lunarLabel = ev.calendarType==='lunar' ? ` · 음력${ev.lunarLeap?'(윤달)':''}` : '';
   return `<div class="cal-tx-row ${ev.id===selectedId?'selected':''}" data-ev-id="${ev.id}">
     <span class="legend-dot" style="background:${ev.color}"></span>
     <div class="dtr-main">
       <div>${escapeHtml(ev.title)}</div>
-      <div class="muted-small">${dateLabel}${repeatLabel}${ownerLabel}${ev.memo?' · '+escapeHtml(ev.memo):''}</div>
+      <div class="muted-small">${dateLabel}${lunarLabel}${repeatLabel}${ownerLabel}${ev.memo?' · '+escapeHtml(ev.memo):''}</div>
     </div>
   </div>`;
 }
@@ -3472,8 +3612,12 @@ function buildColorSwatchRowHtml(selectedColor){
    반복 일정은 회차를 따로 두지 않으므로, 수정·삭제는 항상 반복 일정 전체에 적용된다. */
 function openEventModal(existing, defaultDate){
   const isEdit = !!existing;
-  const dateVal = existing ? existing.date : (defaultDate || scheduleSelectedDate || todayStr());
-  const endDateVal = existing ? (existing.endDate || existing.date) : dateVal;
+  const initialCalType = existing ? (existing.calendarType || 'solar') : 'solar';
+  const initialLeap = existing ? !!existing.lunarLeap : false;
+  const solarDateVal = existing ? existing.date : (defaultDate || scheduleSelectedDate || todayStr());
+  const solarEndDateVal = existing ? (existing.endDate || existing.date) : solarDateVal;
+  const dateVal = initialCalType==='lunar' ? solarToLunarPickerValue(solarDateVal) : solarDateVal;
+  const endDateVal = initialCalType==='lunar' ? solarToLunarPickerValue(solarEndDateVal) : solarEndDateVal;
   const allDay = existing ? existing.allDay : true;
   const initialColor = existing ? existing.color : PALETTE[0];
   const initialRepeat = existing ? existing.repeat : 'none';
@@ -3486,9 +3630,20 @@ function openEventModal(existing, defaultDate){
       <option value="">(미지정)</option>
       ${scheduleOwnerOptions().map(o=>`<option value="${escapeHtml(o)}" ${initialOwner===o?'selected':''}>${escapeHtml(o)}</option>`).join('')}
     </select></div>
+    <div class="field"><label>달력 종류${infoTip('음력을 고르면 날짜 입력칸에서 고른 연/월/일을 음력으로 읽어요. "매년 반복"과 함께 쓰면 추석·생일처럼 해마다 양력 날짜가 바뀌는 음력 기념일도 정확히 반복돼요. 음력 계산은 국제 표준 데이터를 쓰며, 아주 드물게(수십 년에 한두 번) 한국 공식 음력과 하루 차이가 날 수 있어요.')}</label>
+      <div class="cal-type-toggle" id="m-cal-type-toggle">
+        <button type="button" data-cal-type="solar" class="${initialCalType==='solar'?'active':''}">양력</button>
+        <button type="button" data-cal-type="lunar" class="${initialCalType==='lunar'?'active':''}">음력</button>
+      </div>
+    </div>
+    <div class="field" id="m-lunar-leap-field" style="display:${initialCalType==='lunar'?'block':'none'}">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0">
+        <input type="checkbox" id="m-lunar-leap" style="width:auto" ${initialLeap?'checked':''}><span>윤달(윤월)</span>
+      </label>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px">
-      <div class="field"><label>시작일</label><input type="date" id="m-date" value="${dateVal}"></div>
-      <div class="field"><label>종료일</label><input type="date" id="m-end-date" value="${endDateVal}"></div>
+      <div class="field"><label id="m-date-label">${initialCalType==='lunar'?'시작일(음력)':'시작일'}</label><input type="date" id="m-date" value="${dateVal}"></div>
+      <div class="field"><label id="m-end-date-label">${initialCalType==='lunar'?'종료일(음력)':'종료일'}</label><input type="date" id="m-end-date" value="${endDateVal}"></div>
     </div>
     <div class="field"><label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0">
       <input type="checkbox" id="m-allday" style="width:auto" ${allDay?'checked':''}><span>종일</span>
@@ -3512,6 +3667,16 @@ function openEventModal(existing, defaultDate){
     </div>
   `);
   let selectedColor = initialColor;
+  let currentCalType = initialCalType;
+  document.getElementById('m-cal-type-toggle').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    currentCalType = btn.dataset.calType;
+    document.querySelectorAll('#m-cal-type-toggle button').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('m-lunar-leap-field').style.display = currentCalType==='lunar' ? 'block' : 'none';
+    document.getElementById('m-date-label').textContent = currentCalType==='lunar' ? '시작일(음력)' : '시작일';
+    document.getElementById('m-end-date-label').textContent = currentCalType==='lunar' ? '종료일(음력)' : '종료일';
+  });
   document.getElementById('m-color-row').addEventListener('click', (e)=>{
     const sw = e.target.closest('.color-swatch');
     if (!sw || !sw.dataset.color) return;
@@ -3554,9 +3719,23 @@ function openEventModal(existing, defaultDate){
   document.getElementById('m-save').onclick = ()=>{
     const title = document.getElementById('m-title').value.trim();
     if (!title){ alert('제목을 입력해주세요.'); return; }
-    const date = document.getElementById('m-date').value;
-    if (!date){ alert('시작일을 선택해주세요.'); return; }
-    const endDate = document.getElementById('m-end-date').value || date;
+    const rawDate = document.getElementById('m-date').value;
+    if (!rawDate){ alert('시작일을 선택해주세요.'); return; }
+    const rawEndDate = document.getElementById('m-end-date').value || rawDate;
+    const lunarLeapVal = document.getElementById('m-lunar-leap').checked;
+
+    let date, endDate, lunarMonth = null, lunarDay = null, lunarLeap = false;
+    if (currentCalType === 'lunar'){
+      date = lunarPickerToSolar(rawDate, lunarLeapVal);
+      if (!date){ alert('입력한 음력 시작일이 올바르지 않아요. (그 달에 없는 날짜이거나, 그 해에 윤달이 없을 수 있어요)'); return; }
+      endDate = lunarPickerToSolar(rawEndDate, lunarLeapVal);
+      if (!endDate){ alert('입력한 음력 종료일이 올바르지 않아요.'); return; }
+      const [, lm, ld] = rawDate.split('-').map(Number);
+      lunarMonth = lm; lunarDay = ld; lunarLeap = lunarLeapVal;
+    } else {
+      date = rawDate;
+      endDate = rawEndDate;
+    }
     if (endDate < date){ alert('종료일은 시작일보다 빠를 수 없어요.'); return; }
     const allDayVal = document.getElementById('m-allday').checked;
     const startTime = allDayVal ? '' : document.getElementById('m-time').value;
@@ -3566,7 +3745,7 @@ function openEventModal(existing, defaultDate){
     const repeatUntil = repeat!=='none' ? (document.getElementById('m-repeat-until').value || '') : '';
     const memo = document.getElementById('m-memo').value.trim();
     const owner = document.getElementById('m-owner').value;
-    const payload = { title, date, endDate, allDay:allDayVal, startTime, endTime, repeat, repeatUntil, color:selectedColor, memo, owner };
+    const payload = { title, date, endDate, allDay:allDayVal, startTime, endTime, repeat, repeatUntil, color:selectedColor, memo, owner, calendarType:currentCalType, lunarMonth, lunarDay, lunarLeap };
     if (isEdit){ Object.assign(existing, payload); }
     else { state.events.push({ id:uid('evt'), ...payload }); }
     markDirty(); closeModal();
@@ -5250,6 +5429,18 @@ function addTestEvents(){
   heavyTitles.forEach((title,i)=>{
     testEvents.push({ id:uid('evt'), title, date:dayStr(heavyDay), endDate:dayStr(heavyDay), allDay:false, startTime:`${8+i*2}:00`, endTime:'', repeat:'none', repeatUntil:'', color:PALETTE[i%PALETTE.length], memo:'테스트', owner:i%2?owner1:owner2 });
   });
+  // 음력 변환 확인용 사례: 오늘의 음력 날짜로 하나(오늘에 정확히 나와야 정상), 추석(음력 8/15) 매년
+  // 반복으로 하나(해마다 다른 양력 날짜에 나와야 정상)를 추가한다.
+  const todayLunar = solarToLunar(y, new Date().getMonth()+1, new Date().getDate());
+  if (todayLunar){
+    const todaySolarStr = todayStr();
+    testEvents.push({ id:uid('evt'), title:`음력 테스트(오늘=음력 ${todayLunar.lMonth}/${todayLunar.lDay})`, date:todaySolarStr, endDate:todaySolarStr, allDay:true, startTime:'', endTime:'', repeat:'none', repeatUntil:'', color:PALETTE[5], memo:'테스트', owner:'', calendarType:'lunar', lunarMonth:todayLunar.lMonth, lunarDay:todayLunar.lDay, lunarLeap:!!todayLunar.isLeap });
+  }
+  const chuseok = lunarToSolar(y, 8, 15, false);
+  if (chuseok){
+    const chuseokStr = `${chuseok.year}-${String(chuseok.month).padStart(2,'0')}-${String(chuseok.day).padStart(2,'0')}`;
+    testEvents.push({ id:uid('evt'), title:'추석(매년 음력 반복)', date:chuseokStr, endDate:chuseokStr, allDay:true, startTime:'', endTime:'', repeat:'yearly', repeatUntil:'', color:PALETTE[1], memo:'테스트', owner:'공통', calendarType:'lunar', lunarMonth:8, lunarDay:15, lunarLeap:false });
+  }
 
   state.events.push(...testEvents);
   markDirty();
