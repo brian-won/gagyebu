@@ -260,6 +260,11 @@
   .tx-modal-fav-item b { display:block; font-size:12.5px; }
   .tx-modal-fav-item .muted-small { font-size:11px; }
   .tx-modal-form { flex:1; min-width:0; }
+  /* 10차: 거래 수정 시 구분(수입/지출/이체) 바꾸기 */
+  .tx-type-switch { display:flex; gap:6px; margin:-2px 0 12px; }
+  .tx-type-switch button { flex:1; min-height:38px; padding:6px 0; border:1px solid var(--border); border-radius:10px; background:var(--surface); color:var(--text-secondary); font-size:14px; font-weight:700; cursor:pointer; }
+  .tx-type-switch button.active { border-color:var(--series-1); background:var(--series-1); color:#fff; }
+  .tx-convert-note { margin:0 0 12px; padding:9px 11px; border-radius:10px; background:rgba(61,107,255,.08); color:var(--text-primary); font-size:13px; line-height:1.5; }
   @media (max-width:760px){
     .tx-modal-layout { flex-direction:column; }
     .tx-modal-favs { width:100%; border-right:none; border-bottom:1px solid var(--border); padding-right:0; padding-bottom:10px; max-height:160px; }
@@ -1746,6 +1751,7 @@ let scheduleOwnerFilter = new Set();
 let scheduleOwnerFilterOpen = false;
 /* 달력에서 여는 수입/이체/지출 입력 팝업의 현재 상태 */
 let txModalType = null;
+let txModalConvert = null;   // 10차: 수정 중 구분을 바꿨으면 { fromType, date, amount, memo }
 let txModalEditingId = null;
 /* 설정 화면 "카테고리 관리"의 현재 선택 상태 (저장되지 않는 화면 전용 상태) */
 let catManagerType = 'expense';
@@ -4639,11 +4645,20 @@ function focusNextTxField(currentId){
     if (nextEl) nextEl.focus();
   }
 }
-function openTxEntryModal(type, dateStr, editingId){
+/* opts.convert = { fromType, date, amount, memo } : 수정 중에 구분(수입/지출/이체)을 바꿔 다시 연 경우.
+   날짜·금액·메모는 이어받고, 대분류/소분류(이체는 받는 계좌)·계좌·담당·속성은 비워서 다시 고르게 한다. */
+function openTxEntryModal(type, dateStr, editingId, opts){
   txModalType = type;
   txModalEditingId = editingId || null;
   const editing = editingId ? state.transactions.find(x=>x.id===editingId) : null;
-  const titleText = type + ' 입력';
+  const convert = (editing && opts && opts.convert && opts.convert.fromType !== type) ? opts.convert : null;
+  txModalConvert = convert;
+  const titleText = type + (editing ? ' 수정' : ' 입력');
+  const typeSwitchHtml = editing ? `
+        <div class="tx-type-switch" role="radiogroup" aria-label="구분 바꾸기">
+          ${['수입','지출','이체'].map(k=>`<button type="button" data-tx-convert="${k}" class="${k===type?'active':''}" aria-pressed="${k===type}">${k}</button>`).join('')}
+        </div>
+        ${convert ? `<p class="tx-convert-note">${escapeHtml(convert.fromType)} → ${escapeHtml(type)}(으)로 바꾸는 중이에요. ${type==='이체'?'받는 계좌·보내는 계좌':'대분류·소분류·계좌'}·담당을 다시 골라 주세요.</p>` : ''}` : '';
 
   document.getElementById('modal-box').classList.add('modal-wide');
   openModal(`
@@ -4654,6 +4669,7 @@ function openTxEntryModal(type, dateStr, editingId){
       </div>
       <div class="tx-modal-form">
         <h3>${escapeHtml(titleText)}</h3>
+        ${typeSwitchHtml}
         <div class="field"><label>날짜</label><input type="date" id="pop-date"></div>
         <div class="field"><label id="pop-category-label">${type==='이체'?'받는 계좌':'대분류'}</label><select id="pop-category"></select></div>
         <div class="field" id="pop-subcat-field" style="${type==='이체'?'display:none':''}"><label id="pop-subcat-label">소분류</label><select id="pop-subcat"><option value="">(선택 안함)</option></select></div>
@@ -4732,7 +4748,21 @@ function openTxEntryModal(type, dateStr, editingId){
     if (el) el.addEventListener('change', ()=> focusNextTxField(id));
   });
 
-  if (editing){
+  if (convert){
+    // 구분을 바꿨으면 이어받을 것(날짜·금액·메모)만 채우고, 나머지는 '선택' 상태로 비운다
+    const catSel = document.getElementById('pop-category');
+    catSel.insertAdjacentHTML('afterbegin', `<option value="">(${type==='이체'?'받는 계좌':'대분류'} 선택)</option>`);
+    catSel.value = '';
+    if (type!=='이체') populateSubCategorySelect(document.getElementById('pop-subcat'), '');
+    document.getElementById('pop-account').value = '';
+    const ownerSel = document.getElementById('pop-owner');
+    ownerSel.insertAdjacentHTML('afterbegin', '<option value="">(담당 선택)</option>');
+    ownerSel.value = '';
+    document.getElementById('pop-date').value = convert.date || editing.date;
+    document.getElementById('pop-amount').value = convert.amount || fmtMoneyInput(editing.amount);
+    document.getElementById('pop-memo').value = convert.memo != null ? convert.memo : (editing.memo || '');
+    document.getElementById('pop-fixedvar').value = fixedVarOptionsForType(type)[0];
+  } else if (editing){
     document.getElementById('pop-date').value = editing.date;
     document.getElementById('pop-category').value = type==='이체' ? (editing.toAccountId||'') : editing.category;
     if (type!=='이체'){ populateSubCategorySelect(document.getElementById('pop-subcat'), editing.category); document.getElementById('pop-subcat').value = editing.subCategory || ''; }
@@ -4747,6 +4777,17 @@ function openTxEntryModal(type, dateStr, editingId){
   }
 
   renderPopFavList(type);
+
+  // 구분 바꾸기: 지금 입력한 날짜·금액·메모를 들고 새 구분으로 다시 연다(저장은 '수정 완료'를 눌러야 됨)
+  document.querySelectorAll('#modal-box [data-tx-convert]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const next = btn.dataset.txConvert;
+      if (next === type) return;
+      const carry = { fromType: editing.type, date: document.getElementById('pop-date').value,
+        amount: document.getElementById('pop-amount').value, memo: document.getElementById('pop-memo').value };
+      openTxEntryModal(next, carry.date, editingId, next === editing.type ? null : { convert: carry });
+    };
+  });
 
   document.getElementById('pop-close').onclick = closeModal;
   if (editingId){
@@ -4789,11 +4830,22 @@ function submitPopForm(){
   const subCategory = txModalType!=='이체' ? document.getElementById('pop-subcat').value : '';
   const fixedVar = document.getElementById('pop-fixedvar').value;
   const excludeStat = POP_FIXEDVAR_EXCLUDE_VALUES.includes(fixedVar);
+  if (txModalEditingId && txModalConvert){
+    // 구분을 바꾼 경우: 비워 둔 항목을 다시 골랐는지 확인
+    if (txModalType!=='이체' && !categorySelVal){ alert('대분류를 선택해주세요.'); return false; }
+    if (state.members.length && !owner){ alert('담당을 선택해주세요.'); return false; }
+  }
   const result = buildTxPayload({date, type:txModalType, categorySelVal, amount, accountId, owner, memo, fixedVar, subCategory, excludeStat});
   if (result.error){ alert(result.error); return false; }
   if (txModalEditingId){
     const t = state.transactions.find(x=>x.id===txModalEditingId);
     Object.assign(t, result.payload);
+    if (txModalConvert){
+      // 다른 구분 목록에 선택 표시가 남지 않게
+      if (calSelectedIncomeTxId===t.id) calSelectedIncomeTxId = null;
+      if (calSelectedExpenseTxId===t.id) calSelectedExpenseTxId = null;
+      txModalConvert = null;
+    }
   } else {
     const instOnEl = document.getElementById('pop-installment-on');
     if (instOnEl && instOnEl.checked){
