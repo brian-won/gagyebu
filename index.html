@@ -2306,8 +2306,9 @@ function openCloudFromTopbar(){
 /* ===================== 9차(W3 5번): 웹용 미지정 거래 일괄 분류 =====================
    앱 전용 inbox-ui.js 는 순수 웹에서 로드되지 않으므로 웹용을 여기 둔다. 앱(Capacitor 네이티브/androidBridge/InboxUI 로드)에서는
    inbox-ui 의 '미지정' 칩·목록이 이미 있으므로 이 칩·모달을 만들지 않는다. 순수 웹이면 폭과 무관하게 보인다.
-   '미지정' 기준은 inbox-ui needsInput 과 같은 의미: 지출·수입은 대분류(category) 없음, 이체는 보내는/받는 계좌 중 하나라도 없음.
-   (웹에는 자동 등록 표식이 없을 수 있어 auto/pending 여부와 무관하게 모든 거래를 본다.) */
+   11차 '미지정' 기준(inbox-ui missingFields 와 같은 규칙): 대분류·소분류·계좌·담당·내역(메모) 중 하나라도 비면 미지정.
+   소분류는 그 대분류에 소분류 목록이 있을 때만, 이체는 대분류·소분류 대신 보내는/받는 계좌, 담당은 함께 쓰는 사람이 있을 때만 본다.
+   (자동 등록 표식과 무관하게 모든 거래를 본다.) */
 function isAppEnvForWebPending(){
   try{
     if (window.InboxUI || window.androidBridge) return true;
@@ -2316,11 +2317,22 @@ function isAppEnvForWebPending(){
     return typeof cap.isNativePlatform === 'function' ? !!cap.isNativePlatform() : true;
   }catch(_){ return false; }
 }
-function webTxNeedsInput(t){
-  if (!t) return false;
-  if (t.type === '이체') return !t.accountId || !t.toAccountId;
-  return !t.category;
+function txMissingFields(t){
+  const out = [];
+  if (!t) return out;
+  if (t.type === '이체'){
+    if (!t.accountId) out.push('보내는 계좌');
+    if (!t.toAccountId) out.push('받는 계좌');
+  } else {
+    if (!t.category) out.push('대분류');
+    else if (subCatsOf(t.category).length && !t.subCategory) out.push('소분류');
+    if (!t.accountId) out.push('계좌');
+  }
+  if ((state.members || []).length && !t.owner) out.push('담당');
+  if (!String(t.memo || '').trim()) out.push('내역');
+  return out;
 }
+function webTxNeedsInput(t){ return txMissingFields(t).length > 0; }
 function webPendingTxList(){
   return (state.transactions || []).filter(webTxNeedsInput)
     .sort((a,b)=> String(b.date||'').localeCompare(String(a.date||'')));
@@ -2351,7 +2363,7 @@ function openWebPendingModal(){
   const accOpts = transactableAccounts().map(a=>`<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join('');
   openModal(
     '<div class="section-title"><h3>미지정 거래 <span class="muted-small" id="wpend-total"></span></h3><button type="button" class="btn small ghost" id="wpend-close">닫기</button></div>' +
-    '<p class="muted-small" style="margin:0 0 8px">대분류(이체는 계좌)가 비어 있는 거래예요. 줄을 누르면 개별 수정, 체크해서 한꺼번에 지정할 수 있어요.</p>' +
+    '<p class="muted-small" style="margin:0 0 8px">대분류·소분류·계좌·담당·내역 중 빈칸이 있는 거래예요. 줄을 누르면 개별 수정, 체크해서 한꺼번에 지정할 수 있어요.</p>' +
     '<div class="wpend-head"><label><input type="checkbox" id="wpend-all"> 전체 선택</label><span class="wpend-count" id="wpend-count">0건 선택</span></div>' +
     '<div class="wpend-list" id="wpend-list"></div>' +
     '<div class="wpend-bulk" id="wpend-bulk" style="display:none">' +
@@ -2359,6 +2371,7 @@ function openWebPendingModal(){
         majOpts('지출', (state.categories && state.categories.expense) || []) + majOpts('수입', (state.categories && state.categories.income) || []) + '</select>' +
       '<select id="wpend-sub" aria-label="소분류" disabled><option value="">소분류(선택 안 함)</option></select>' +
       '<select id="wpend-acc" aria-label="계좌"><option value="">계좌(변경 안 함)</option>' + accOpts + '</select>' +
+      ((state.members||[]).length ? '<select id="wpend-owner" aria-label="담당"><option value="">담당(변경 안 함)</option>' + state.members.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('') + '</select>' : '') +
       '<button type="button" class="btn small primary" id="wpend-apply">선택 항목에 적용</button>' +
       '<button type="button" class="btn small danger" id="wpend-del">선택 삭제</button>' +
     '</div>' +
@@ -2423,7 +2436,7 @@ function drawWebPendingList(){
       const md = d.length>=10 ? d.slice(5,7)+'/'+d.slice(8,10) : d;
       const cls = t.type==='수입' ? 'income' : t.type==='이체' ? 'transfer' : 'expense';
       const ch = t.type==='수입' ? '수' : t.type==='이체' ? '이' : '지';
-      const need = t.type==='이체' ? (!t.accountId && !t.toAccountId ? '계좌 미지정' : !t.accountId ? '보내는 계좌 미지정' : '받는 계좌 미지정') : '대분류 미지정';
+      const need = txMissingFields(t).join('·') + ' 없음';
       const memo = t.memo || t.autoMerchant || '(내역 없음)';
       const sel = webPendSel.has(t.id);
       return `<div class="wpend-row${sel?' sel':''}" data-id="${escapeHtml(t.id)}" title="눌러서 수정">` +
@@ -2448,9 +2461,11 @@ function applyWebPendingBulk(){
   const cat = document.getElementById('wpend-cat').value;
   const sub = document.getElementById('wpend-sub').value;
   const acc = document.getElementById('wpend-acc').value;
+  const ownEl = document.getElementById('wpend-owner');
+  const own = ownEl ? ownEl.value : '';
   const msg = document.getElementById('wpend-msg');
   if (!ids.size) return;
-  if (!cat && !acc){ if (msg) msg.textContent = '적용할 대분류나 계좌를 골라주세요.'; return; }
+  if (!cat && !acc && !own){ if (msg) msg.textContent = '적용할 대분류·계좌·담당 중 하나를 골라주세요.'; return; }
   const before = webPendingTxList().length;
   let applied = 0, skippedCat = 0;
   state.transactions.forEach(t=>{
@@ -2470,6 +2485,7 @@ function applyWebPendingBulk(){
         else if (!t.toAccountId && t.accountId !== acc){ t.toAccountId = acc; touched = true; }
       } else { t.accountId = acc; touched = true; }
     }
+    if (own && (state.members||[]).includes(own)){ t.owner = own; touched = true; }
     if (touched) applied++;
     if (t.pending && !webTxNeedsInput(t)) t.pending = false;
   });
