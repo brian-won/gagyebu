@@ -2576,10 +2576,12 @@ function renderDashboard(){
   // recent transactions
   const recentFilterEl = document.getElementById('dash-recent-filter');
   if (recentFilterEl) recentFilterEl.value = dashRecentFilter;
-  const recentPool = dashRecentFilter === 'all' ? state.transactions : state.transactions.filter(t=>t.type===dashRecentFilter);
-  const recent = [...recentPool].sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0,8);
+  // 12차 5): HOME은 최근 8건 대신 상단 년/월(currentYM)의 거래 전체(거래내역 목록과 같은 순서). 모바일·PC 공통(사용자 요청).
+  const recentBase = txInMonth(currentYM);
+  const recentPool = dashRecentFilter === 'all' ? recentBase : recentBase.filter(t=>t.type===dashRecentFilter);
+  const recent = [...recentPool].sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   const tbody = document.getElementById('recent-tx-table').querySelector('tbody');
-  tbody.innerHTML = recent.length ? recent.map(rowHtmlSimple).join('') : `<tr><td colspan="7" class="empty-state">거래 내역이 아직 없어요.</td></tr>`;
+  tbody.innerHTML = recent.length ? recent.map(rowHtmlSimple).join('') : `<tr><td colspan="7" class="empty-state">이 달 거래가 없어요.</td></tr>`;
 
   renderTrendChart();
   renderDashCatSection();
@@ -5431,13 +5433,9 @@ function renderAssetsView(){
       evalCell = '<span class="muted-small">—</span>';
       profitCell = '<span class="muted-small">—</span>';
     } else {
-      const expected = expectedAccountBalance(a.id, currentYM);
       const isManual = hasManualBalanceAt(a.id, currentYM);
-      let reconHint = '';
-      if (expected !== null && bal !== null && expected !== bal){
-        const diff = bal - expected;
-        reconHint = `<div class="recon-hint">예상 <b>${fmtWon(expected)}</b> vs 실제 <b>${fmtWon(bal)}</b> (차액 ${fmtWonSigned(diff)})<button class="btn small ghost" data-reconcile-account="${a.id}" data-reconcile-diff="${diff}">차액 조정거래로 기록</button></div>`;
-      }
+      // 12차 2): 목록에는 '예상 vs 실제'를 띄우지 않는다(입력한 잔액 그대로, 모바일·PC 공통) — 차액 조정은 잔고추적 팝업에서
+      const reconHint = '';
       balCell = `<input type="text" inputmode="decimal" data-bal-account="${a.id}" value="${fmtMoneyInput(bal)}" placeholder="${creditCard?'예: -500,000':'입력'}" style="width:130px;text-align:right;padding:6px 8px;border:1px solid ${isManual?'var(--border)':'var(--warning, #e0a72a)'};border-radius:6px;background:var(--surface);color:${bal<0?'var(--critical)':'var(--text-primary)'}">${reconHint}`;
       const bal2 = bal || 0;
       if (bal2 > 0){
@@ -5558,6 +5556,27 @@ function renderNetWorthChart(){
   });
 }
 
+/* 차액(입력한 잔액 - 예상 잔액)만큼 '잔액 조정' 거래를 ym 에 기록한다. 기록 후에도 입력한 잔액이 그대로 유지되도록
+   그 달 잔액을 다시 확정(기준 거래 합계 갱신)한다 — 안 하면 조정 거래만큼 잔액도 같이 움직여 차액이 사라지지 않는다.
+   반환: 기록했는지 */
+function recordBalanceAdjust(accId, ym, diff){
+  if (isNaN(diff) || diff === 0) return false;
+  const keepBal = accountBalanceAt(accId, ym);
+  // 신용카드도 일반 계좌와 같은 방식으로 잔액을 계산하므로(지출 시 (-), 수입 시 (+)) 방향은 동일하다.
+  const type = diff > 0 ? '수입' : '지출';
+  const [ry, rm] = ym.split('-').map(Number);
+  const lastDay = new Date(ry, rm, 0).getDate();
+  const rday = Math.min(new Date().getDate(), lastDay);
+  const rdate = `${ym}-${String(rday).padStart(2,'0')}`;
+  state.transactions.push({
+    id: uid('tx'), date: rdate, type, category: type==='수입' ? '기타수입' : '기타지출',
+    subCategory: '', amount: Math.abs(diff), accountId: accId, owner: state.members[0]||'',
+    memo: '잔액 조정', fixedVar: type==='수입' ? '수입 제외' : '지출 제외', excludeStat: true, toAccountId: null
+  });
+  if (hasManualBalanceAt(accId, ym) && state.balances[ym] && state.balances[ym][accId] !== undefined) setManualBalance(accId, ym, keepBal);
+  return true;
+}
+
 /* 계좌 하나의 잔고 추이(최근 12개월)를 차트+월별 입력표로 보여주는 "잔고 추적" 팝업 */
 function openBalanceTrackModal(accId){
   const acc = state.accounts.find(a=>a.id===accId);
@@ -5583,8 +5602,23 @@ function openBalanceTrackModal(accId){
     document.getElementById('baltrack-body').innerHTML = months.map(m=>{
       const v = accountBalanceAt(accId, m);
       const isManual = hasManualBalanceAt(accId, m);
-      return `<tr><td>${ymLabel(m)}</td><td class="num"><input type="text" inputmode="decimal" data-baltrack-month="${m}" value="${fmtMoneyInput(v)}" style="width:140px;text-align:right;padding:6px 8px;border:1px solid ${isManual?'var(--border)':'var(--warning, #e0a72a)'};border-radius:6px;background:var(--surface);color:var(--text-primary)"></td></tr>`;
+      // 12차 2): 목록 대신 여기서 '예상 vs 실제'와 차액 조정 버튼을 보여 준다(입력한 달만 해당, 모바일·PC 공통)
+      let recon = '';
+      const expected = expectedAccountBalance(accId, m);
+      if (expected !== null && v !== null && expected !== v){
+        const diff = v - expected;
+        recon = `<tr class="baltrack-recon"><td colspan="2"><div class="recon-hint">예상 <b>${fmtWon(expected)}</b> vs 실제 <b>${fmtWon(v)}</b> (차액 ${fmtWonSigned(diff)})<button type="button" class="btn small ghost" data-baltrack-adjust="${m}" data-baltrack-diff="${diff}">차액 조정거래로 기록</button></div></td></tr>`;
+      }
+      return `<tr><td>${ymLabel(m)}</td><td class="num"><input type="text" inputmode="decimal" data-baltrack-month="${m}" value="${fmtMoneyInput(v)}" style="width:140px;text-align:right;padding:6px 8px;border:1px solid ${isManual?'var(--border)':'var(--warning, #e0a72a)'};border-radius:6px;background:var(--surface);color:var(--text-primary)"></td></tr>${recon}`;
     }).join('');
+    document.querySelectorAll('[data-baltrack-adjust]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        if (recordBalanceAdjust(accId, btn.dataset.baltrackAdjust, parseFloat(btn.dataset.baltrackDiff))){
+          markDirty();
+          setTimeout(renderTrack, 0);
+        }
+      });
+    });
     document.querySelectorAll('[data-baltrack-month]').forEach(inp=>{
       inp.addEventListener('change', (e)=>{
         const m = e.target.dataset.baltrackMonth;
@@ -7670,20 +7704,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if (hideId) toggleAccountsHidden([hideId]);
     if (reconId){
       const diff = parseFloat(e.target.dataset.reconcileDiff);
-      if (!isNaN(diff) && diff !== 0){
-        // 신용카드도 이제 일반 계좌와 같은 방식으로 잔액을 계산하므로(지출 시 (-), 수입 시 (+)) 방향은 동일하다.
-        const type = diff > 0 ? '수입' : '지출';
-        const [ry, rm] = currentYM.split('-').map(Number);
-        const lastDay = new Date(ry, rm, 0).getDate();
-        const rday = Math.min(new Date().getDate(), lastDay);
-        const rdate = `${currentYM}-${String(rday).padStart(2,'0')}`;
-        state.transactions.push({
-          id: uid('tx'), date: rdate, type, category: type==='수입' ? '기타수입' : '기타지출',
-          subCategory: '', amount: Math.abs(diff), accountId: reconId, owner: state.members[0]||'',
-          memo: '잔액 조정', fixedVar: type==='수입' ? '수입 제외' : '지출 제외', excludeStat: true, toAccountId: null
-        });
-        markDirty(); renderAll();
-      }
+      if (recordBalanceAdjust(reconId, currentYM, diff)){ markDirty(); renderAll(); }
     }
     // 7차(팀 A, 11번): 모바일 목록은 행(입력칸·버튼 밖)을 누르면 계좌 수정 화면(평가금/이익금 포함)을 연다
     // 8차(팀 X, 1번): 체크박스 칸(체크박스 주변 여백 포함)을 누르면 수정 화면 대신 선택만 바꾼다
@@ -8035,6 +8056,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const input = el.querySelector('#household-gate-input');
       const msg = el.querySelector('#household-gate-msg');
       const btn = el.querySelector('#household-gate-connect');
+      // 12차 1): 최근 코드가 남아 있는데 접속에 실패해(예: 인터넷 끊김) 게이트가 뜬 경우 그 코드를 미리 채워 둔다
+      try{ input.value = localStorage.getItem('household-code') || ''; }catch(_){}
       const tryConnect = async ()=>{
         const code = (input.value||'').trim();
         // 6차(16번): 빈칸이면 동기화 없이 앱으로 진입(게이트 닫힘). 상단 "● 가족코드 미연결"로 나중에 연결 가능.
@@ -8084,7 +8107,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (cancelBtn) cancelBtn.onclick = closeModal;
       if (confirmBtn) confirmBtn.onclick = async ()=>{
         closeModal();
-        try{ disconnectHousehold(); }catch(_){ /* 무시 */ }
+        // 12차 1): 종료해도 가족 코드 연결은 끊지 않는다 — 다음 실행 때 최근 코드로 바로 접속(설정에서 '연결 해제'한 경우만 게이트)
         try{
           const cap = window.Capacitor;
           const App = cap && cap.Plugins && cap.Plugins.App;
@@ -8103,6 +8126,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
           if (closeTopOverlayIfAny()) return;
           // 2) 가족 코드 게이트가 떠 있으면(모달도 없는 상태) 종료 확인만 띄운다(코드 없이 종료 허용).
           if (householdGateActive()){ confirmExitApp({ allowWithoutCode: true }); return; }
+          // 12차 4): HOME(대시보드)에서는 더 뒤로 가지 않고 종료 확인(이력도 비움).
+          if (__currentViewName === 'dashboard'){ __viewHistoryStack.length = 0; confirmExitApp({}); return; }
           // 3) 화면 이동 이력이 있으면 이전 화면으로.
           if (__viewHistoryStack.length){
             const prev = __viewHistoryStack.pop();
