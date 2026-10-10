@@ -7037,6 +7037,8 @@ function clickExistingButton(id){
   if (el) el.click();
 }
 function openScreenSettingsMenu(title, items){
+  // 14차: show() 가 false 인 항목(예: 앱 전용 '문자함 불러오기' — 웹에는 버튼이 없음)은 빼고 그린다
+  items = items.filter(it=>{ try { return typeof it.show !== 'function' || it.show(); } catch(_){ return false; } });
   openModal(`<div class="section-title"><h3>${escapeHtml(title)}</h3><button type="button" class="btn small ghost" id="screen-menu-close">닫기</button></div>
     <div class="screen-menu-list">${items.map((it,i)=>{
       // 7차(팀 A): label 이 함수면 메뉴를 열 때마다 계산(예: '숨긴 계좌 보기 (N)' / '숨긴 계좌 감추기' 토글)
@@ -7055,6 +7057,8 @@ function openScreenSettingsMenu(title, items){
 }
 const SCREEN_SETTINGS_MENUS = {
   'tx-screen-settings-btn': ['거래내역 설정', [
+    // 14차: 설정 카드에 있던 앱 전용 '불러오기'(기간 지정 문자함 불러오기)를 여기로 — inbox-ui 가 만든 (숨긴) 버튼을 누른다
+    {label:'문자함 불러오기 (지난 카드·은행 문자)', show:()=>!!document.getElementById('inbox-import-btn'), run:()=>clickExistingButton('inbox-import-btn')},
     {label:'문자/카카오톡 붙여넣기', run:()=>clickExistingButton('paste-add-btn')},
     {label:'거래내역 불러오기 (엑셀/CSV 파일)', run:()=>clickExistingButton('import-file-btn')},
     {label:'표 내용 붙여넣기로 가져오기', run:()=>clickExistingButton('import-paste-btn')},
