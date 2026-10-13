@@ -700,6 +700,8 @@
   #m-cloud-pill .dot { width:8px; height:8px; border-radius:50%; flex:0 0 auto; background:var(--critical); }
   #m-cloud-pill.on .dot { background:var(--good); }
   #m-cloud-pill .code { overflow:hidden; text-overflow:ellipsis; min-width:0; font-family:ui-monospace, monospace; }
+  /* 17차: 모바일은 상단 ‹ › 화살표로 폭이 좁아져 '가족코드 미…'로 잘리므로 '가족코드' 글자를 빼고 '미연결'만(연결 시엔 원래도 코드만) */
+  @media (max-width: 760px){ #m-cloud-pill .lbl { display:none !important; } }
   /* 7차(2번 C안): 전체 가족코드 풍선 */
   #m-cloud-bubble { position:fixed; z-index:60; max-width:calc(100vw - 16px); background:var(--text-primary); color:var(--card);
     border-radius:12px; padding:10px 12px; box-shadow:0 6px 18px rgba(0,0,0,.25); font-size:12px; }
@@ -8087,7 +8089,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       el.innerHTML =
         '<div style="max-width:360px;width:100%;text-align:center">' +
           '<h2 style="margin:0 0 8px;color:var(--text-primary,#1A1D29)">가족 코드를 입력해주세요</h2>' +
-          '<p style="margin:0 0 16px;color:var(--muted,#8B90A3);font-size:13px">가족과 가계부 데이터를 함께 쓰려면 가족 코드로 연결해요.<br>비워두고 연결하기를 누르면 동기화 없이 시작해요(나중에 상단 "가족코드 미연결"을 눌러 연결할 수 있어요).</p>' +
+          '<p style="margin:0 0 16px;color:var(--muted,#8B90A3);font-size:13px">가족과 가계부 데이터를 함께 쓰려면 가족 코드로 연결해요.<br>비워두고 연결하기를 누르면 동기화 없이 시작해요(나중에 상단의 빨간 점 "미연결"을 눌러 연결할 수 있어요).</p>' +
           '<input type="text" id="household-gate-input" placeholder="가족 코드 (비워두면 동기화 없이 시작)" ' +
             'style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--border,#ccc);border-radius:8px;background:var(--surface,#FAFBFD);color:var(--text-primary,#1A1D29);margin-bottom:10px;font-size:14px">' +
           '<button class="btn primary" id="household-gate-connect" style="width:100%">연결하기</button>' +
