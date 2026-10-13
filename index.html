@@ -607,6 +607,7 @@
 
   /* 6차: 모바일 전용/데스크톱 전용 표시 유틸(모바일 기준 = 760px 이하, JS 는 window.innerWidth<=760 로 판정 — matchMedia 금지) */
   .m-only { display:none !important; }
+  @media (min-width: 761px){ #recent-more { display:none !important; } }   /* 16차: 홈 최근 거래 더보기는 모바일 전용(.m-only 는 인라인 숨김을 덮어써서 안 씀) */
   @media (max-width: 760px){ .m-only { display:revert !important; } .d-only { display:none !important; } }
   /* 6차 보완: 모바일 거래내역 하위 탭은 아이콘 없이 글자 박스로(즐겨찾기 옆 '미지정' 칩이 한 화면에 보이도록) */
   @media (max-width: 760px){ .tx-subtab-btn .tab-ico { display:none; } .tx-subtab-btn { padding-left:10px !important; padding-right:10px !important; } }
@@ -685,6 +686,12 @@
     border-radius:10px; padding:5px 10px; font-size:13.5px; font-weight:700; white-space:nowrap; flex:0 0 auto;
   }
   #m-ym-btn .caret { font-size:10px; color:var(--muted); }
+  /* 17차: 모바일 상단 날짜 버튼 양옆 '이전 달 / 다음 달' 화살표(데스크톱은 #month-picker 의 ‹ › 를 그대로 씀) */
+  .m-ym-arrow { display:none; }
+  @media (max-width: 760px){
+    .m-ym-arrow { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; width:26px; height:30px; padding:0;
+      border:1px solid var(--border); background:var(--card); color:var(--text-primary); border-radius:10px; font-size:17px; font-weight:700; line-height:1; cursor:pointer; }
+  }
   #m-cloud-pill {
     align-items:center; gap:5px; border:1px solid var(--border); background:var(--page); color:var(--text-secondary);
     border-radius:20px; padding:4px 10px; font-size:11.5px; font-weight:700; white-space:nowrap; min-width:0; flex:0 1 auto;
@@ -873,7 +880,9 @@
         <button id="next-month">›</button>
         <button class="btn small" id="today-btn">오늘</button>
       </div>
+      <button type="button" class="m-ym-arrow" id="m-prev-month" aria-label="이전 달">‹</button>
       <button type="button" id="m-ym-btn" aria-label="년/월 선택"><span id="m-ym-label"></span><span class="caret">▾</span></button>
+      <button type="button" class="m-ym-arrow" id="m-next-month" aria-label="다음 달">›</button>
     </div>
     <div class="tb-right">
       <button type="button" id="m-cloud-pill" aria-label="가족코드 동기화"><span class="dot"></span><span class="lbl">가족코드</span><span class="code">미연결</span></button>
@@ -909,6 +918,7 @@
             </div>
           </div>
           <table id="recent-tx-table"><thead><tr><th class="m-only" aria-label="구분"></th><th class="m-only">날짜</th><th class="m-only num">금액</th><th class="d-only" aria-label="구분"></th><th class="d-only">날짜</th><th class="d-only">대분류</th><th class="d-only">소분류</th><th><span class="d-only">내용</span><span class="m-only">내역</span></th><th>담당</th><th class="d-only num">금액</th></tr></thead><tbody></tbody></table>
+          <div id="recent-more" style="display:none;text-align:center;margin-top:10px"><button type="button" class="btn small" id="recent-more-btn" style="min-height:40px;padding:0 18px">더보기</button></div>
         </div>
         <div class="card stat-tile stat-tile-toggle" id="stat-tile-expense" data-stat-key="expense">
           <div class="label">지출 <span class="stat-eye">👁</span></div>
@@ -1728,6 +1738,7 @@ let assetsShowHiddenOnly = false;
 let assetsSelectedIds = new Set();
 let __assetsSelKey = null;
 let dashRecentFilter = '지출';
+let dashRecentStep = 0, dashRecentMoreKey = '';   // 16차: 모바일 홈 최근 거래 더보기 단계(0=8건, 1=16건, 2=전체)
 let dashStatRevealed = { expense:false, income:false, save:false, networth:false };
 /* 대시보드 대분류 원형 차트: 지출/수입 각각 독립적으로 드릴다운(선택한 대분류) 상태를 기억한다. null이면 대분류 단계 */
 let dashCatDrill = { '지출': null, '수입': null };
@@ -2581,7 +2592,21 @@ function renderDashboard(){
   const recentPool = dashRecentFilter === 'all' ? recentBase : recentBase.filter(t=>t.type===dashRecentFilter);
   const recent = [...recentPool].sort((a,b)=> b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   const tbody = document.getElementById('recent-tx-table').querySelector('tbody');
-  tbody.innerHTML = recent.length ? recent.map(rowHtmlSimple).join('') : `<tr><td colspan="7" class="empty-state">이 달 거래가 없어요.</td></tr>`;
+  // 16차: 모바일은 처음 8건 → '더보기' 16건 → '전체 보기'로 그 달 전체. 달·보기 필터가 바뀌면 다시 8건부터. PC는 그대로 전체.
+  let shown = recent;
+  const moreBox = document.getElementById('recent-more');
+  try {
+    const key = currentYM + '|' + dashRecentFilter;
+    if (dashRecentMoreKey !== key){ dashRecentMoreKey = key; dashRecentStep = 0; }
+    if (window.innerWidth <= 760 && dashRecentStep < 2) shown = recent.slice(0, dashRecentStep ? 16 : 8);
+    if (moreBox){
+      const left = recent.length - shown.length;
+      moreBox.style.display = left > 0 ? '' : 'none';
+      const mb = document.getElementById('recent-more-btn');
+      if (mb) mb.textContent = dashRecentStep === 0 ? `더보기 (${Math.min(8, left)}건 더)` : `전체 보기 (${left}건 더)`;
+    }
+  } catch (e) { shown = recent; if (moreBox) moreBox.style.display = 'none'; }
+  tbody.innerHTML = shown.length ? shown.map(rowHtmlSimple).join('') : `<tr><td colspan="7" class="empty-state">이 달 거래가 없어요.</td></tr>`;
 
   renderTrendChart();
   renderDashCatSection();
@@ -7274,6 +7299,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   document.getElementById('prev-month').onclick = ()=>{ currentYM = addMonths(currentYM,-1); renderAll(); };
   document.getElementById('next-month').onclick = ()=>{ currentYM = addMonths(currentYM,1); renderAll(); };
+  // 17차: 모바일 상단 화살표도 같은 동작
+  try{
+    document.getElementById('m-prev-month').onclick = ()=>{ currentYM = addMonths(currentYM,-1); renderAll(); };
+    document.getElementById('m-next-month').onclick = ()=>{ currentYM = addMonths(currentYM,1); renderAll(); };
+  }catch(_){ /* 무시 */ }
   document.getElementById('today-btn').onclick = ()=>{ currentYM = todayStr().slice(0,7); calSelectedDate = todayStr(); scheduleSelectedDate = todayStr(); renderAll(); };
   // 6차(1·2·3·8번): 모바일 상단바 전용 버튼 + 설정의 '화면 모드'. 초기화 경로라 try/catch 로 격리.
   try{
@@ -7306,6 +7336,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
     dashRecentFilter = e.target.value;
     renderAll();
   });
+  // 16차: 모바일 홈 '최근 거래' 더보기(8 → 16 → 전체)
+  try{
+    document.getElementById('recent-more-btn').addEventListener('click', ()=>{
+      dashRecentStep = Math.min(2, dashRecentStep + 1);
+      renderDashboard();
+    });
+  }catch(_){ /* 무시 */ }
   // 7차(7번): 모바일 홈 '최근 거래' 줄을 누르면 그 줄 근처에 '대분류 > 소분류' 말풍선. 다른 곳을 누르거나 스크롤하면 닫힘.
   // 초기화 경로라 try/catch 로 격리(실패해도 앱 동작에 영향 없음).
   try{
