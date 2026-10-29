@@ -622,6 +622,25 @@
     /* 7차 보완: 총 예산·지출 두 칸 아래에 잔여 예산을 한 줄 전체 폭으로 */
     #view-budget .budget-summary-grid .budget-remaining-tile { grid-column:1 / -1 !important; }
   }
+  /* 22차: 달력 열 넓히기(모바일, applyCalExpand) — 좁힌 열(col-mini)은 날짜와 색 점만, 넓힌 열(col-wide)은 금액 전체·일정 이름 */
+  @media (max-width: 760px){
+    .cal-grid.cal-expanded .cal-cell.col-mini { padding:4px 2px; align-items:center; }
+    .cal-grid.cal-expanded .col-mini .cal-holiday { display:none; }
+    .cal-grid.cal-expanded .col-mini .cal-amounts { flex-direction:row; flex-wrap:wrap; justify-content:center; gap:2px; }
+    .cal-grid.cal-expanded .col-mini .cal-amt { font-size:0; width:6px; height:6px; border-radius:50%; background:currentColor; }
+    .cal-grid.cal-expanded .col-mini .cal-event-dots { justify-content:center; gap:2px; }
+    .cal-grid.cal-expanded .col-mini .cal-event-dot { width:5px; height:5px; }
+    .cal-grid.cal-expanded .col-mini .sched-bars, .cal-grid.cal-expanded .col-mini .sched-pills { align-self:stretch; }
+    .cal-grid.cal-expanded .col-mini .sched-bar { font-size:0; }
+    .cal-grid.cal-expanded .col-mini .sched-pill { font-size:0; height:5px; padding:0; }
+    .cal-grid.cal-expanded .col-mini .sched-more { font-size:8px; padding:0; }
+    .cal-grid.cal-expanded .col-wide .cal-amt { font-size:10px; }
+    .cal-grid.cal-expanded .col-wide .cal-holiday { font-size:9px; }
+    .cal-grid.cal-expanded .col-wide .sched-bar { font-size:9.5px; }
+    .cal-grid.cal-expanded .col-wide .sched-pill { font-size:9.5px; white-space:normal; overflow-wrap:anywhere; }
+    .cal-event-names { flex-direction:column; flex-wrap:nowrap; gap:2px; }
+    .cal-ev-name { font-size:9.5px; font-weight:600; color:#fff; padding:1px 5px; border-radius:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  }
   #view-budget .budget-cat-card { position:relative; }
   #view-budget .budget-cat-card .section-title { padding-right:34px; }
   .bgt-bars { display:flex; flex-direction:column; gap:10px; }
@@ -3802,6 +3821,30 @@ function calDefaultDate(){
   return t.slice(0,7)===currentYM ? t : currentYM+'-01';
 }
 
+/* 22차: 모바일(760px 이하) 거래·일정(월간) 달력 — 날짜를 누르면 그 요일 열을 최대한 넓혀 그날 내용을 자세히 보이고
+   나머지 6열은 같은 좁은 폭으로 줄인다. 넓힌 상태에서 같은 날짜를 한 번 더 누르면 7열이 같은 간격으로 돌아간다.
+   PC(761px 이상)는 바꾸지 않는다. 달이 바뀌면 원래대로. */
+var calExpandDow = null;
+var schedExpandDow = null;
+function calIsMobile(){ try { return window.innerWidth <= 760; } catch(_){ return false; } }
+function calNextExpandDow(curDow, prevSelected, dateStr){
+  if (curDow !== null && prevSelected === dateStr) return null;
+  return dateFromYMD(dateStr).getDay();
+}
+/* grid(7열 달력)와 바로 위 요일 머리줄에 열 폭을 적용. dow 가 null 이면 원래(같은 간격). 칸 순서 i%7 = 요일. */
+function applyCalExpand(grid, dow){
+  if (!grid) return;
+  const on = dow !== null && dow !== undefined && calIsMobile();
+  const cols = on ? Array.from({length:7}, (_,i)=> i===dow ? 'minmax(0,1fr)' : '26px').join(' ') : '';
+  const head = grid.previousElementSibling;
+  [grid, head && head.classList.contains('cal-weekdays') ? head : null].forEach(el=>{ if (el) el.style.gridTemplateColumns = cols; });
+  grid.classList.toggle('cal-expanded', on);
+  grid.querySelectorAll('.cal-cell').forEach((c, i)=>{
+    c.classList.toggle('col-wide', on && i%7===dow);
+    c.classList.toggle('col-mini', on && i%7!==dow);
+  });
+}
+
 function calSelectDate(dateStr){
   calSelectedDate = dateStr;
   calSelectedIncomeTxId = null;
@@ -3909,7 +3952,8 @@ function bindCalLongPress(grid){
 function renderCalendarView(){
   const grid = document.getElementById('cal-grid');
   if (!grid) return;
-  if (!calSelectedDate || calSelectedDate.slice(0,7) !== currentYM) calSelectedDate = calDefaultDate();
+  if (!calSelectedDate || calSelectedDate.slice(0,7) !== currentYM){ calSelectedDate = calDefaultDate(); calExpandDow = null; }
+  const wideDow = calIsMobile() ? calExpandDow : null; // 22차: 넓힌 열은 금액 전체·일정 이름까지 표시
   const [y,m] = currentYM.split('-').map(Number);
   const firstDow = new Date(y, m-1, 1).getDay();
   const daysInMonth = new Date(y, m, 0).getDate();
@@ -3933,14 +3977,19 @@ function renderCalendarView(){
     if (holiday) classes.push('holiday');
     if (dateStr === todayStrVal) classes.push('today');
     if (dateStr === calSelectedDate) classes.push('selected');
+    const wide = wideDow !== null && dow === wideDow;
+    const fmtAmt = wide ? fmtWon : fmtWonCompact;
+    const evHtml = !occs.length ? '' : wide
+      ? `<div class="cal-event-dots cal-event-names" data-date="${dateStr}">${occs.map(o=>`<span class="cal-ev-name" style="background:${o.ev.color}">${escapeHtml(o.ev.title)}</span>`).join('')}</div>`
+      : `<div class="cal-event-dots" data-date="${dateStr}">${occs.slice(0,6).map(o=>`<span class="cal-event-dot" style="background:${o.ev.color}"></span>`).join('')}</div>`;
     cells += `<div class="${classes.join(' ')}" data-date="${dateStr}">
       <div class="cal-daynum">${d}</div>
       ${holiday ? `<div class="cal-holiday">${escapeHtml(holiday)}</div>` : ''}
-      ${occs.length ? `<div class="cal-event-dots" data-date="${dateStr}">${occs.slice(0,6).map(o=>`<span class="cal-event-dot" style="background:${o.ev.color}"></span>`).join('')}</div>` : ''}
+      ${evHtml}
       <div class="cal-amounts">
-        ${totals.income ? `<div class="cal-amt income">입금 ${fmtWonCompact(totals.income)}</div>` : ''}
-        ${totals.expense ? `<div class="cal-amt expense">지출 ${fmtWonCompact(totals.expense)}</div>` : ''}
-        ${totals.transfer ? `<div class="cal-amt transfer">이체 ${fmtWonCompact(totals.transfer)}</div>` : ''}
+        ${totals.income ? `<div class="cal-amt income">입금 ${fmtAmt(totals.income)}</div>` : ''}
+        ${totals.expense ? `<div class="cal-amt expense">지출 ${fmtAmt(totals.expense)}</div>` : ''}
+        ${totals.transfer ? `<div class="cal-amt transfer">이체 ${fmtAmt(totals.transfer)}</div>` : ''}
       </div>
     </div>`;
   }
@@ -3950,6 +3999,7 @@ function renderCalendarView(){
     cells += `<div class="cal-cell outside"><div class="cal-daynum">${i}</div></div>`;
   }
   grid.innerHTML = cells;
+  try { applyCalExpand(grid, wideDow); } catch(e){ console.warn('[cal] 열 넓히기 실패', e); }
 
   renderCalSideLists();
 }
@@ -4312,7 +4362,8 @@ function buildScheduleCellInner(dateStr, dayNum, holiday, laneOf, maxLanes){
     if (!o){ barsHtml += `<div class="sched-bar-spacer"></div>`; continue; }
     const isStart = o.occStart===dateStr;
     const isEnd = o.occEnd===dateStr;
-    const showLabel = isStart || dow===0;
+    // 22차: 모바일 월간에서 넓힌 열은 이어지는 일정에도 이름을 보인다
+    const showLabel = isStart || dow===0 || (scheduleViewMode==='month' && schedExpandDow===dow && calIsMobile());
     const timeLb = eventTimeLabel(o.ev);
     const label = showLabel ? escapeHtml((timeLb?timeLb+' ':'')+o.ev.title) : '';
     /* dow===0(그 줄의 첫 칸)라서 진짜 시작일이 아닌데도 이름을 다시 보여주는 경우, bar-start와
@@ -4422,7 +4473,7 @@ function renderScheduleWeekList(container, dates){
 function renderScheduleView(){
   const grid = document.getElementById('sched-grid');
   if (!grid) return;
-  if (!scheduleSelectedDate || scheduleSelectedDate.slice(0,7) !== currentYM) scheduleSelectedDate = scheduleDefaultDate();
+  if (!scheduleSelectedDate || scheduleSelectedDate.slice(0,7) !== currentYM){ scheduleSelectedDate = scheduleDefaultDate(); schedExpandDow = null; }
 
   document.querySelectorAll('.sched-view-toggle button').forEach(b=> b.classList.toggle('active', b.dataset.schedMode===scheduleViewMode));
   renderScheduleOwnerFilter();
@@ -4435,7 +4486,10 @@ function renderScheduleView(){
     weekdaysEl.style.display = '';
     grid.className = 'cal-grid';
     renderScheduleMonthGrid(grid);
+    try { applyCalExpand(grid, calIsMobile() ? schedExpandDow : null); } catch(e){ console.warn('[sched] 열 넓히기 실패', e); }
   } else if (scheduleViewMode==='week'){
+    grid.style.gridTemplateColumns = '';
+    schedExpandDow = null;
     navEl.style.display = '';
     weekdaysEl.style.display = 'none';
     grid.className = 'sched-week-list';
@@ -4448,6 +4502,8 @@ function renderScheduleView(){
     navEl.style.display = '';
     weekdaysEl.style.display = 'none';
     grid.className = 'cal-grid sched-grid-day';
+    grid.style.gridTemplateColumns = '';
+    schedExpandDow = null;
     rangeLabelEl.textContent = `${formatDateKorean(scheduleSelectedDate)} · ${weekOfMonth(scheduleSelectedDate)}주차`;
     renderScheduleRowGrid(grid, [scheduleSelectedDate], Infinity);
   }
@@ -7446,6 +7502,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if (!cell || cell.classList.contains('outside')) return;
     // 7차(9번): 길게 눌러 입력 팝업을 이미 띄운 직후 따라오는 click 은 무시
     if (Date.now() < calLongPressSuppressClickUntil) return;
+    // 22차: 모바일은 누른 날짜의 요일 열을 넓히고, 넓힌 상태에서 같은 날짜를 또 누르면 원래 간격으로
+    if (calIsMobile()) calExpandDow = calNextExpandDow(calExpandDow, calSelectedDate, cell.dataset.date);
     calSelectDate(cell.dataset.date);
     // 모바일(760px 이하)은 짧게 누르면 날짜 선택만, 입력 팝업은 0.5초 길게 누르기로 연다(bindCalLongPress).
     // 761~900px 는 기존 동작(탭하면 입력 팝업) 유지. matchMedia 는 쓰지 않는다.
@@ -7535,10 +7593,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('sched-grid').addEventListener('click', (e)=>{
     const cell = e.target.closest('.cal-cell, .sched-week-row');
     if (!cell || cell.classList.contains('outside')) return;
+    // 22차: 모바일 월간 달력은 누른 날짜의 요일 열을 넓히고, 넓힌 상태에서 같은 날짜를 또 누르면 원래 간격으로
+    const expand = calIsMobile() && scheduleViewMode==='month' && cell.classList.contains('cal-cell');
+    if (expand) schedExpandDow = calNextExpandDow(schedExpandDow, scheduleSelectedDate, cell.dataset.date);
     scheduleSelectedDate = cell.dataset.date;
     const evTarget = e.target.closest('[data-ev-id]');
     scheduleSelectedEventId = evTarget ? evTarget.dataset.evId : null;
-    renderScheduleSideList();
+    if (expand) renderScheduleView();
+    else renderScheduleSideList();
   });
   document.querySelectorAll('.sched-view-toggle button').forEach(btn=>{
     btn.addEventListener('click', ()=>{
